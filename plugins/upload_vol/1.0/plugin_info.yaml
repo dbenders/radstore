@@ -1,0 +1,18 @@
+plugin:
+  name: process_vol
+  description: manipula archivos .vol
+  version: "1.0"
+
+product_types:
+  - name: vol
+    description: "archivo .vol crudo, generado por el radar."
+    mime_type: text/xml
+
+transformations:
+  - name: import
+    description: Sube un archivo .vol crudo.
+    parameters:
+      - fname       
+    outputs:
+      - type: vol
+

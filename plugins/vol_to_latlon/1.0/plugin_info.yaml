@@ -1,0 +1,20 @@
+plugin:
+  name: vol2csv
+  description: genera archivos csv a partir de archivos vol
+  version: "1.0"
+
+product_types:
+  - name: vol
+  - name: csv.latlon
+    description: "archivo csv, con coordenadas geográficas (latitud, longitud)"
+    mime_type: text/csv
+    metadata: 
+      - slice: int
+
+transformations:
+  - name: latlon
+    description: Sube un archivo .vol crudo.
+    inputs: 
+      - type: vol
+    outputs:
+      - type: csv.latlon
