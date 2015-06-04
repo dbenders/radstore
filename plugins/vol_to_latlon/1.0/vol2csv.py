@@ -253,12 +253,10 @@ def check_result(resp):
     return resp_data
 
 
-# Cuerpo principal del Script
-if __name__ == '__main__':
-    
+def convert(f_name):    
     #Se recibe como argumento el nombre del archivo .vol a procesar
     #Receives as argument the name of the file .vol to be processed 
-    f_name = sys.argv[1]
+    #f_name = sys.argv[1]
     
     f = urllib.urlopen('http://localhost:8080/api/v1/products/%s/content' % f_name)
     #f = open(f_name,'rb')
@@ -317,9 +315,10 @@ if __name__ == '__main__':
                 #o dejar el polares y guardar.
 
                 output_metadata = {
-                    'type': 'latlon',
+                    'type': 'csv.latlon',
                     'datetime': src['datetime'],
                     'variable': src['variable'],
+                    'name': '%s_%i.csv' % (src['name'].split('.')[0], i),
                     'slice': i
                 }
 
@@ -352,3 +351,18 @@ if __name__ == '__main__':
                 #fo.close()
                 resp_data = check_result(
                     requests.post('http://localhost:8080/api/v1/products/%s/content' % output_id, data=data))
+
+
+import sys
+def main():
+    cmd = sys.argv[1]
+    if cmd == 'to_latlon':
+        k,v = sys.argv[2].split('=')
+        if k == 'source':
+            print "to_latlon %s" % v
+            convert(v)
+
+
+# Cuerpo principal del Script
+if __name__ == '__main__':
+    main()

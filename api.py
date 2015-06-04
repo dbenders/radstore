@@ -8,6 +8,7 @@ from static import serve_gzip_file
 import os
 import random
 import gzip
+import subprocess
 
 client = pymongo.MongoClient()
 db = client['radar']
@@ -15,8 +16,10 @@ db = client['radar']
 class MongoModel(object):	
 	DEFAULT_LIMIT = 20
 
-	def __init__(self, collname):
+	def __init__(self, collname, name_singular, name_plural):
 		self.coll = db[collname]
+		self.name_singular = name_singular
+		self.name_plural = name_plural
 
 	def process_pagination_params(self, q, **kwargs):
 		if 'offset' in kwargs: q = q.skip(int(kwargs['offset']))
@@ -28,18 +31,22 @@ class MongoModel(object):
 		for k,v in kwargs.items():
 			if k == 'limit' or k == 'offset': continue
 			v = self.parse_value(v)
-			if '.' in k: 
-				k,op = k.split('.')[:2]
-				if op == 'in': flt[k] = {'$in': [self.parse_value(x) for x in v.split(',')]}
-				else: flt[k] = {'$' + op: v}
+			#import ipdb; ipdb.set_trace()
+			if '.' in k and k.split('.')[-1].startswith('$'):
+				x = k.split('.')
+				k,op = '.'.join(x[:-1]),x[-1]
+				#if op == 'in': flt[k] = {'$in': v} #[self.parse_value(x) for x in v.split(',')]}
+				#else: flt[k] = {'$' + op: v}
+				flt[k] = {op: v}
 			else:
 				flt[k] = v
+		print flt
 		q = q.find(flt)
 		return q
 
 	def parse_value(self, v):
-		try: return dateutil.parser.parse(v)
-		except: pass
+
+		if ',' in v: return [self.parse_value(x) for x in v.split(',')]
 
 		try: return ObjectId(v)
 		except: pass
@@ -49,6 +56,9 @@ class MongoModel(object):
 		except: pass
 
 		try: return int(v)
+		except: pass
+
+		try: return dateutil.parser.parse(v)
 		except: pass
 
 		return v
@@ -65,37 +75,75 @@ class MongoModel(object):
 				'status': status,
 				'message': message
 			}
+		cherrypy.response.headers['Content-Type'] = 'application/json'
 		return simplejson.dumps(ans, default=str)
 
+	def GET(self, id=None, **kwargs):
+		if id is None:
+			q = self.process_filter_params(self.coll, **kwargs)
+			q = self.process_pagination_params(q, **kwargs)
+	
+			return self.build_response('ok', **{
+					'count': q.count(),
+					'limit': kwargs.get('limit',self.DEFAULT_LIMIT),
+					'offset': kwargs.get('offset',0),
+					self.name_plural: list(q)
+				})
+		else:
+			q = self.coll.find_one({'_id':ObjectId(id)})
+			return self.build_response('ok', **{self.name_singular: q})
 
 class Products(MongoModel):
 	exposed = True
 	fs_dir = os.path.join(os.path.split(os.path.abspath(__file__))[0],'fs')
 
 	def __init__(self):
-		super(Products, self).__init__('product')
+		super(Products, self).__init__('product','product','products')
 
 	def GET(self, id=None, content=None, **kwargs):
 		if id is None:
+			if 'include' in kwargs: 
+				include = kwargs.pop('include').split(',')
+			else:
+				include = []
 			q = self.process_filter_params(self.coll, **kwargs)
 			count = q.count()
 			limit = int(kwargs.get('limit',self.DEFAULT_LIMIT))
 			if limit == 0:
 				q = []
 			else:
-				q = self.process_pagination_params(q, **kwargs)
-			
+				q = self.process_pagination_params(q, **kwargs)			
+			q = list(q)
+
+			if 'transformations' in include:
+				for doc in q:
+					qt = db['transformation'].find({'inputs._id':doc['_id']})
+					if qt.count() > 0:
+						doc['transformations'] = list(qt)
+
 			return self.build_response('ok', **{
 					'count': count,
 					'limit': limit,
 					'offset': int(kwargs.get('offset',0)),
-					'products': list(q)
+					'products': q
 				})
 		else:
 			if content == 'content':
-	 			return serve_gzip_file(os.path.join(self.fs_dir,id), "application/x-download", "attachment")
-	 		else:
 				q = self.coll.find_one({'_id':ObjectId(id)})
+	 			return serve_gzip_file(os.path.join(self.fs_dir,id), q['name'], "application/x-download", "attachment")
+	 		else:
+				if 'include' in kwargs: 
+					include = kwargs.pop('include').split(',')
+				else:
+					include = []
+
+				q = self.coll.find_one({'_id':ObjectId(id)})
+
+				if 'transformations' in include:
+					qt = db['transformation'].find({'inputs._id':q['_id']})
+					if qt.count() > 0:
+						q['transformations'] = list(qt)
+
 				return self.build_response('ok', **dict(product=q))
 
 	def upload_file(self, id):
@@ -108,7 +156,6 @@ class Products(MongoModel):
 				fo.write(data)	
 		return size	
 
-	#@cherrypy.tools.json_in()
 	def POST(self, id=None, content=None, metadata=None, **kwargs):
 		if id is None:
 			if metadata is None: 
@@ -132,18 +179,38 @@ class Products(MongoModel):
 		return self.build_response('ok',**dict(product={'_id':id}))
 
 
+class Processes(MongoModel):
+	exposed = True
+
+	def __init__(self):
+		super(Processes, self).__init__('plugin','process','processes')
+
+	def GET(self, name=None, **kwargs):
+		if name is not None:
+			q = self.coll.find_one({'name':name})
+			return self.build_response('ok', **{'process':q})
+		else:
+			return super(Processes, self).GET(name, **kwargs)
+
+	def POST(self, name, transformation, **kwargs):
+		params = ['%s=%s' % (k,v) for k,v in simplejson.load(cherrypy.request.body).items()]
+		q = self.coll.find_one({'name':name})
+		cmdline =  q['executable'].split() + [transformation] + params
+		p = subprocess.Popen(cmdline, cwd=q['working_dir'])
+		out = p.communicate()
+		return self.build_response('ok')
 
 class Transformations(MongoModel):
 	exposed = True
 
 	def __init__(self):
-		super(Transformations, self).__init__('transformation')
+		super(Transformations, self).__init__('transformation','transformation','transformations')
 
 	def GET(self, id=None, **kwargs):
 		if id is None:
 			q = self.process_filter_params(self.coll, **kwargs)
 			q = self.process_pagination_params(q, **kwargs)
-			
+	
 			return self.build_response('ok', **{
 					'count': q.count(),
 					'limit': kwargs.get('limit',self.DEFAULT_LIMIT),
@@ -157,6 +224,8 @@ class Transformations(MongoModel):
 	def POST(self, id=None, outputs=None, **kwargs):
 		if id is None:
 			metadata = simplejson.load(cherrypy.request.body)
+			for inp in metadata.get("inputs",[]):
+				if '_id' in inp: inp['_id'] = self.parse_value(inp['_id'])
 			id = self.coll.insert_one(metadata).inserted_id
 			return self.build_response('ok', **dict(transformation={'_id':id}))
 
@@ -208,6 +277,12 @@ if __name__ == '__main__':
         })
     cherrypy.tree.mount(    
         Transformations(), '/api/v1/transformations',
+        {'/':
+            {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
+        }        
+    )
+    cherrypy.tree.mount(    
+        Processes(), '/api/v1/procs',
         {'/':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         }        

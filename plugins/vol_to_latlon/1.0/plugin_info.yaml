@@ -1,5 +1,6 @@
 plugin:
   name: vol2csv
+  executable: venv/bin/python vol2csv.py
   description: genera archivos csv a partir de archivos vol
   version: "1.0"
 
@@ -12,9 +13,10 @@ product_types:
       - slice: int
 
 transformations:
-  - name: latlon
-    description: Sube un archivo .vol crudo.
+  - name: to_latlon
+    description: "genera un archivo csv latlon a partir de un archivo .vol"
     inputs: 
-      - type: vol
+      - name: source
+        type: vol
     outputs:
       - type: csv.latlon

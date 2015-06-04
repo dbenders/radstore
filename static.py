@@ -23,7 +23,7 @@ def getuncompressedsize(filename):
         return struct.unpack('I', f.read(4))[0]
 
 
-def serve_gzip_file(path, content_type=None, disposition=None, name=None,
+def serve_gzip_file(path, fname, content_type=None, disposition=None, name=None,
                debug=False):
     """Set status, headers, and body in order to serve the given path.
 
@@ -85,7 +85,7 @@ def serve_gzip_file(path, content_type=None, disposition=None, name=None,
     if disposition is not None:
         if name is None:
             name = os.path.basename(path)
-        cd = '%s; filename="%s"' % (disposition, name)
+        cd = '%s; filename="%s"' % (disposition, fname)
         response.headers["Content-Disposition"] = cd
     if debug:
         cherrypy.log('Content-Disposition: %r' % cd, 'TOOLS.STATIC')

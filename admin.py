@@ -1,6 +1,7 @@
 import subprocess
 import yaml
 import pymongo
+import os
 
 client = pymongo.MongoClient()
 db = client['radar']
@@ -12,7 +13,7 @@ def import_plugins():
 	while len(line)>0:
 		print line
 		data = yaml.load(open(line))
-
+		data['plugin']['working_dir'] = os.path.split(line)[0]
 		doc = {'$set': data['plugin']}
 		
 		for transformation in data.get('transformations',[]):

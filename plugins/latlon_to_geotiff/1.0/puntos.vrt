@@ -1,0 +1,11 @@
+<OGRVRTDataSource>
+  <OGRVRTLayer name="puntos">
+    <!-- SrcDataSource relativeToVRT="1">puntos</SrcDataSource -->
+    <SrcDataSource>puntos.csv</SrcDataSource>
+    <SrcLayer>puntos</SrcLayer>
+    <GeometryType>wkbPoint</GeometryType>
+    <LayerSRS>WGS84</LayerSRS>
+    <GeometryField encoding="PointFromColumns" x="lon" y="lat"/>
+    <Field name="dbz" type="Real"/>
+  </OGRVRTLayer>
+</OGRVRTDataSource>
