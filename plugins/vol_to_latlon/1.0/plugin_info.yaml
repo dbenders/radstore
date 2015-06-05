@@ -10,7 +10,9 @@ product_types:
     description: "archivo csv, con coordenadas geográficas (latitud, longitud)"
     mime_type: text/csv
     metadata: 
-      - slice: int
+      variable: string
+      datetime: datetime      
+      slice: int
 
 transformations:
   - name: to_latlon

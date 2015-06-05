@@ -7,6 +7,9 @@ product_types:
   - name: vol
     description: "archivo .vol crudo, generado por el radar."
     mime_type: text/xml
+    metadata:
+      variable: string
+      datetime: datetime      
 
 transformations:
   - name: import

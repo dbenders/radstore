@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #recibe como único parámetro los puntos
-product_id=$2
+product_id=`echo $2 | cut -f 2 -d =`
 los_puntos=los_puntos.csv
 tif=puntos.tif
 shp=puntos.shp
