@@ -1,5 +1,4 @@
 import cherrypy
-import pymongo
 import simplejson
 from bson.objectid import ObjectId
 import dateutil.parser
@@ -10,16 +9,18 @@ import random
 import gzip
 import subprocess
 
-client = pymongo.MongoClient()
-db = client['radar']
+from models import Products, Processes, Transformations, ProductTypes
 
-class MongoModel(object):	
+def CORS(): 
+  cherrypy.response.headers["Access-Control-Allow-Origin"] = "*"
+
+class MongoController(object):
 	DEFAULT_LIMIT = 20
 
-	def __init__(self, collname, name_singular, name_plural):
-		self.coll = db[collname]
+	def __init__(self, dao, name_singular, name_plural):
 		self.name_singular = name_singular
 		self.name_plural = name_plural
+		self.dao = dao
 
 	def process_pagination_params(self, q, **kwargs):
 		if 'offset' in kwargs: q = q.skip(int(kwargs['offset']))
@@ -27,6 +28,9 @@ class MongoModel(object):
 		return q
 
 	def process_filter_params(self, q, **kwargs):
+		fields = None
+		if 'fields' in kwargs: 
+			fields = kwargs.pop('fields').split(',')
 		flt = {}
 		for k,v in kwargs.items():
 			if k == 'limit' or k == 'offset': continue
@@ -41,7 +45,7 @@ class MongoModel(object):
 			else:
 				flt[k] = v
 		print flt
-		q = q.find(flt)
+		q = q.find(flt, fields)
 		return q
 
 	def parse_value(self, v):
@@ -75,14 +79,16 @@ class MongoModel(object):
 				'status': status,
 				'message': message
 			}
+		cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
 		cherrypy.response.headers['Content-Type'] = 'application/json'
 		return simplejson.dumps(ans, default=str)
 
 	def GET(self, id=None, **kwargs):
+
 		if id is None:
-			q = self.process_filter_params(self.coll, **kwargs)
+			q = self.process_filter_params(self.dao.collection, **kwargs)
 			q = self.process_pagination_params(q, **kwargs)
-	
+
 			return self.build_response('ok', **{
 					'count': q.count(),
 					'limit': kwargs.get('limit',self.DEFAULT_LIMIT),
@@ -90,23 +96,43 @@ class MongoModel(object):
 					self.name_plural: list(q)
 				})
 		else:
-			q = self.coll.find_one({'_id':ObjectId(id)})
+			q = self.dao.find_one({'_id':ObjectId(id)})
 			return self.build_response('ok', **{self.name_singular: q})
 
-class Products(MongoModel):
+class ProductTypesController(MongoController):
+	exposed = True
+
+	def __init__(self):
+		super(ProductTypesController, self).__init__(ProductTypes,'product_type','product_types')
+
+	def GET(self, name=None, **kwargs):
+		if name is not None:
+			if 'distinct' in kwargs:
+				q = Products.distinct(kwargs['distinct'])
+				return self.build_response('ok', **{'values': q})
+			else:
+				q = ProductTypes.find_one({'name':name})
+				return self.build_response('ok', **{self.name_singular: q})
+		else:
+			return super(ProductTypesController, self).GET(name, **kwargs)
+
+
+class ProductsController(MongoController):
 	exposed = True
 	fs_dir = os.path.join(os.path.split(os.path.abspath(__file__))[0],'fs')
 
 	def __init__(self):
-		super(Products, self).__init__('product','product','products')
+		super(ProductsController, self).__init__(Products,'product','products')
 
 	def GET(self, id=None, content=None, **kwargs):
 		if id is None:
-			if 'include' in kwargs: 
-				include = kwargs.pop('include').split(',')
-			else:
-				include = []
-			q = self.process_filter_params(self.coll, **kwargs)
+			# if 'include' in kwargs: 
+			# 	include = kwargs.pop('include').split(',')
+			# else:
+			# 	include = []
+
+			q = self.process_filter_params(Products.collection, **kwargs)
+
 			count = q.count()
 			limit = int(kwargs.get('limit',self.DEFAULT_LIMIT))
 			if limit == 0:
@@ -115,11 +141,11 @@ class Products(MongoModel):
 				q = self.process_pagination_params(q, **kwargs)			
 			q = list(q)
 
-			if 'transformations' in include:
-				for doc in q:
-					qt = db['transformation'].find({'inputs._id':doc['_id']})
-					if qt.count() > 0:
-						doc['transformations'] = list(qt)
+			# if 'transformations' in include:
+			# 	for doc in q:
+			# 		qt = Transformations.find({'inputs._id':doc['_id']})
+			# 		if qt.count() > 0:
+			# 			doc['transformations'] = list(qt)
 
 			return self.build_response('ok', **{
 					'count': count,
@@ -129,7 +155,7 @@ class Products(MongoModel):
 				})
 		else:
 			if content == 'content':
-				q = self.coll.find_one({'_id':ObjectId(id)})
+				q = Products.find_one({'_id':ObjectId(id)})
 	 			return serve_gzip_file(os.path.join(self.fs_dir,id), q['name'], "application/x-download", "attachment")
 	 		else:
 				if 'include' in kwargs: 
@@ -137,10 +163,10 @@ class Products(MongoModel):
 				else:
 					include = []
 
-				q = self.coll.find_one({'_id':ObjectId(id)})
+				q = Products.find_one({'_id':ObjectId(id)})
 
 				if 'transformations' in include:
-					qt = db['transformation'].find({'inputs._id':q['_id']})
+					qt = Transformations.find({'inputs._id':q['_id']})
 					if qt.count() > 0:
 						q['transformations'] = list(qt)
 
@@ -161,13 +187,13 @@ class Products(MongoModel):
 			if metadata is None: 
 				metadata = simplejson.load(cherrypy.request.body)
 			metadata['content_length'] = 0
-			id = self.coll.insert_one(metadata).inserted_id
+			id = Products.insert_one(metadata).inserted_id
 			return self.build_response('ok',**dict(product={'_id':id}))
 
 		else:
 			if content == 'content':
 				size = self.upload_file(id)
-				self.coll.update_one({'_id': ObjectId(id)},{'$set':{'content_length':size}})
+				Products.update_one({'_id': ObjectId(id)},{'$set':{'content_length':size}})
 				return self.build_response('ok',**dict(product={'_id':id}))
 
 			else:
@@ -175,40 +201,43 @@ class Products(MongoModel):
 
 	def PUT(self, id, **kwargs):
 		metadata = simplejson.load(cherrypy.request.body)
-		coll.update_one({'_id':ObjectId(id)}, metadata)
+		Products.update_one({'_id':ObjectId(id)}, metadata)
 		return self.build_response('ok',**dict(product={'_id':id}))
 
 
-class Processes(MongoModel):
+class ProcessesController(MongoController):
 	exposed = True
 
 	def __init__(self):
-		super(Processes, self).__init__('plugin','process','processes')
+		super(ProcessesController, self).__init__(Processes,'process','processes')
 
-	def GET(self, name=None, **kwargs):
+	def GET(self, name=None, transformation=None, **kwargs):
 		if name is not None:
-			q = self.coll.find_one({'name':name})
+			q = Processes.find_one({'name':name})
+			cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
 			return self.build_response('ok', **{'process':q})
 		else:
-			return super(Processes, self).GET(name, **kwargs)
+			return super(ProcessesController, self).GET(name, **kwargs)
 
 	def POST(self, name, transformation, **kwargs):
 		params = ['%s=%s' % (k,v) for k,v in simplejson.load(cherrypy.request.body).items()]
-		q = self.coll.find_one({'name':name})
+		q = Processes.find_one({'name':name})
 		cmdline =  q['executable'].split() + [transformation] + params
+		print "(%s) %s" % (q['working_dir'],cmdline)
 		p = subprocess.Popen(cmdline, cwd=q['working_dir'])
 		out = p.communicate()
+		cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
 		return self.build_response('ok')
 
-class Transformations(MongoModel):
+class TransformationsController(MongoController):
 	exposed = True
 
 	def __init__(self):
-		super(Transformations, self).__init__('transformation','transformation','transformations')
+		super(TransformationsController, self).__init__(Transformations,'transformation','transformations')
 
 	def GET(self, id=None, **kwargs):
 		if id is None:
-			q = self.process_filter_params(self.coll, **kwargs)
+			q = self.process_filter_params(Transformations.collection, **kwargs)
 			q = self.process_pagination_params(q, **kwargs)
 	
 			return self.build_response('ok', **{
@@ -218,7 +247,7 @@ class Transformations(MongoModel):
 					'transformations': list(q)
 				})
 		else:
-			q = self.coll.find_one({'_id':ObjectId(id)})
+			q = Transformations.find_one({'_id':ObjectId(id)})
 			return self.build_response('ok', **dict(transformation=q))
 
 	def POST(self, id=None, outputs=None, **kwargs):
@@ -226,17 +255,22 @@ class Transformations(MongoModel):
 			metadata = simplejson.load(cherrypy.request.body)
 			for inp in metadata.get("inputs",[]):
 				if '_id' in inp: inp['_id'] = self.parse_value(inp['_id'])
-			id = self.coll.insert_one(metadata).inserted_id
+
+			id = Transformations.insert_one(metadata).inserted_id
+
+			for inp in metadata.get("inputs",[]):
+				Products.update_one({'_id':inp['_id']},{'$push':{'transformations':{'_id':id}}})
+
 			return self.build_response('ok', **dict(transformation={'_id':id}))
 
 		else:
 			if outputs == 'outputs':
 				metadata = simplejson.load(cherrypy.request.body)
-				resp = simplejson.loads(Products().POST(id=None, metadata=metadata))
+				resp = simplejson.loads(ProductsController().POST(id=None, metadata=metadata))
 				if resp['status'] != 'ok':
 					return self.build_response('error', 
 						message='error creating output product: %s' % resp['message'])
-				self.coll.update_one({'_id':ObjectId(id)},{'$push':{'outputs':{'_id':ObjectId(resp['data']['product']['_id'])}}})
+				Transformations.update_one({'_id':ObjectId(id)},{'$push':{'outputs':{'_id':ObjectId(resp['data']['product']['_id'])}}})
 				return self.build_response('ok', **dict(product=resp['data']['product']))
 
 			else:
@@ -270,19 +304,27 @@ class Transformations(MongoModel):
 
 if __name__ == '__main__':
 
+    import cherrypy_cors
+    cherrypy_cors.install()
+
     cherrypy.tree.mount(
-        Products(), '/api/v1/products',
+        ProductsController(), '/api/v1/products',
+        {'/':
+            {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
+        })
+    cherrypy.tree.mount(
+        ProductTypesController(), '/api/v1/product_types',
         {'/':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         })
     cherrypy.tree.mount(    
-        Transformations(), '/api/v1/transformations',
+        TransformationsController(), '/api/v1/transformations',
         {'/':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         }        
     )
     cherrypy.tree.mount(    
-        Processes(), '/api/v1/procs',
+        ProcessesController(), '/api/v1/procs',
         {'/':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         }        
