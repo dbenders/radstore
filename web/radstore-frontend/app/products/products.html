@@ -1,0 +1,32 @@
+<p>Productos</p>
+
+Type:
+  <select ng-model="type" ng-change="changed()">
+    <option ng-repeat="type in types" value="{{type}}">{{type}}</option>
+  </select>
+
+Variable: 
+  <select ng-model="variable" ng-change="changed()">
+    <option ng-repeat="var in variables" value="{{var}}">{{var}}</option>
+  </select>
+
+<div ng-controller="ProductsCtrl">
+  <table border="1">
+    <thead>
+      <tr>
+        <th>id</th>
+        <th ng-repeat="attr in product_attributes">{{attr}}</th>
+        <th>transformations</th>
+      </tr>
+    </thead>
+    <tr ng-repeat="product in products">
+      <td><a ng-href="#/products/{{product._id}}">{{product._id}}</a></td>
+      <td ng-repeat="attr in product_attributes">{{product[attr]}}</td>
+      <td>
+        <span ng-repeat="transf in product.transformations">
+          <span ng-repeat="outp in transformations[transf._id]"><a ng-href="#/products/{{outp}}">{{outp|limitTo:5}}</a>&nbsp;</span>
+        </span>&nbsp;        
+      </td>
+    </tr>
+  </table>
+</div>

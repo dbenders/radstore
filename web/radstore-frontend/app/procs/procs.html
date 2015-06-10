@@ -1,0 +1,25 @@
+<p>Procesos</p>
+
+<div ng-controller="ProductsCtrl">
+  <ul>
+    <li ng-repeat="proc in procs">
+      <b>{{proc.name}}</b>: {{proc.description}}
+      <ul>
+        <li ng-repeat="transf in proc.transformations">
+          <a ng-click="show_form = proc.name+'/'+transf.name" 
+              href="javascript:void(0);">{{transf.name}}</a>: {{transf.description}}
+
+          <table ng-show="show_form == proc.name+'/'+transf.name">
+            <tr ng-repeat="inp in transf.inputs">
+              <td>{{inp.name}}</td>
+              <td><input ng-model="params[inp.name]"></inout></td>
+            </tr>
+            <tr>
+              <td><button ng-click="runProc(proc.name,transf.name)">run</button></td>
+            </tr>
+          </table>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>

@@ -1,27 +1,33 @@
 import pymongo
 
-db = pymongo.MongoClient()['radar']
+client = pymongo.MongoClient()
+db = client['radar']
 
-class MongoModel(object):
+class MongoDAO(object):
 	def __init__(self, collname):
-		self.collection = db[collname]
+		self.coll = db[collname]
+
+	@property
+	def collection(self):
+		return self.coll
 
 	def find(self, *args, **kwargs):
-		return self.collection.find(*args, **kwargs)
+		return self.coll.find(*args, **kwargs)
 
 	def find_one(self, *args, **kwargs):
-		return self.collection.find_one(*args, **kwargs)
-
-	def update(self, *args, **kwargs):
-		return self.collection.update(*args, **kwargs)
-
-	def update_one(self, *args, **kwargs):
-		return self.collection.update_one(*args, **kwargs)
+		return self.coll.find_one(*args, **kwargs)
 
 	def insert_one(self, *args, **kwargs):
-		return self.collection.insert_one(*args, **kwargs)
+		return self.coll.insert_one(*args, **kwargs)
 
-Products = MongoModel('product')
-Processes = MongoModel('process')
-Transformations = MongoModel('transformation')
-ProductTypes = MongoModel('product_type')
+	def update_one(self, *args, **kwargs):
+		return self.coll.update_one(*args, **kwargs)
+
+	def distinct(self, *args, **kwargs):
+		return self.coll.distinct(*args, **kwargs)
+
+
+Products = MongoDAO('product')
+ProductTypes = MongoDAO('product_type')
+Transformations = MongoDAO('transformation')
+Processes = MongoDAO('plugin')

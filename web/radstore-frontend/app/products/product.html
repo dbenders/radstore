@@ -1,0 +1,10 @@
+<div ng-controller="ProductCtrl">
+
+  <p>Producto: <b>{{product._id}}</b></p>
+  <table border="1">
+    <tr ng-repeat="attr in attributes">
+      <td><b>{{attr}}</b></td>
+      <td>{{product[attr]}}</td>
+    </tr>
+  </table>
+</div>
