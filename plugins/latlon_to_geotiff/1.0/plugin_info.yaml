@@ -6,7 +6,7 @@ plugin:
 
 product_types:
   - name: csv.latlon
-  - name: geotiff
+  - name: geotiff.original
     description: "archivo geotiff que contiene un slice del radar"
     mime_type: image/tiff
     metadata: 
@@ -19,4 +19,4 @@ transformations:
       - name: source
         type: csv.latlon
     outputs:
-      - type: tif.latlon
+      - type: geotiff.original

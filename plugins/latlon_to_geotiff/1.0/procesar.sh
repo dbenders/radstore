@@ -3,44 +3,52 @@
 #recibe como único parámetro los puntos
 product_id=`echo $2 | cut -f 2 -d =`
 
-los_puntos=los_puntos.csv
-tif=puntos.tif
-shp=puntos.shp
-csv=puntos.csv
-tmp=puntos.tmp
+tmpdir=/tmp/latlon_to_geotiff
+uuid=product_id #$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+tmpfile=${tmpdir}/${uuid}
+
+tsv=${tmpfile}.tsv
+csv=${tmpfile}.csv
+shp=${tmpfile}_shp
+tif=${tmpfile}.tif
+
 vrt=puntos.vrt
-new_shp_name=shp
 
-rm ${los_puntos}
-rm -rf ${new_shp_name}
-curl -o ${los_puntos} "http://localhost:8080/api/v1/products/${product_id}/content"
 
-dir_base=./
+# new_shp_name=${UUID}.shp
+# los_puntos=${UUID}.sv
+# tif=${UUID}.tif
+# shp=puntos.shp
+# csv=${UUID}.csv
+# tmp=${UUID}.tmp
 
-#Prepara el encabezado para el csv
-#echo lon,lat,dbz > ${csv}
-#cat ${csv}
-#dumpea encabezado y datos reemplazando espacios por comas
-cat ${csv} ${los_puntos} | sed 's/\s/,/g' > ${tmp}
-cat ${tmp} > ${csv}
+
+mkdir -p ${tmpdir}
+
+echo Descargando...
+curl -o ${tsv} "http://localhost:8080/api/v1/products/${product_id}/content"
+
 echo Preparando datos...
-#head ${csv}
-
+cat ${tsv} | sed 's/\s/,/g' > ${csv}
+  
 echo Convirtiendo a shp...
-ogr2ogr -f "ESRI Shapefile" ${new_shp_name} ${vrt} -overwrite
+ogr2ogr -f "ESRI Shapefile" ${shp} ${vrt}
 
 echo Crear imagen en blanco...
-cp ${dir_base}template-grilla-TM-LIMPIA.tif ${tif}
+cp ./template-grilla-TM-LIMPIA.tif ${tif}
 
 #Rasterizar los puntos del barrido
-echo Rasterizar los puntos del barrido
-gdal_rasterize -ts 487 505 -a_nodata -99 -a dbz -l puntos ./${new_shp_name}/${shp}  ${tif}
+echo Rasterizar los puntos del barrido...
+gdal_rasterize -ts 487 505 -a_nodata -99 -a dbz -l puntos ${shp}/puntos.shp  ${tif}
 
 #Suavizar la imagen
 #venv/bin/python completa-blancos.py ${tif} 2 max
 
 #Sube 
 venv/bin/python upload.py ${product_id}
+
+#borra
+rm -rf ${tmpdir}/${uuid}*
 
 #cambia de disco los hechos
 #mv ${los_puntos} ${dir_hechos}

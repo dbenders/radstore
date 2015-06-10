@@ -1,21 +1,31 @@
 plugin:
   name: aggregate_raster
-  executable: venv/bin/python vol2csv.py
+  executable: venv/bin/python aggregate_raster.py
   description: "diferentes métodos para combinar imágenes raster en una sola (max, min, etc)"
   version: "1.0"
 
 product_types:
-  - name: geotiff
+  - name: geotiff.original
+  - name: geotiff.aggregated
+    description: "archivo geotiff que contiene un agregado temporal para un slice del radar"
+    mime_type: image/tiff
+    metadata:
+      slice: int
+      variable: string
+      duration: int
+      operation: string
 
 transformations:
   - name: aggregate
     description: ""
-    inputs: 
-      - name: source
-        type: list(geotiff)
-      - name: operation
+    inputs:
+      - name: datetime
         type: string
-      - name: output_metadata
+      - name: duration
+        type: int
+      - name: filters
+        type: int
+      - name: operation
         type: string
     outputs:
       - type: geotiff

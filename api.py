@@ -8,6 +8,7 @@ import os
 import random
 import gzip
 import subprocess
+import datetime
 
 from models import Products, Processes, Transformations, ProductTypes
 
@@ -32,7 +33,6 @@ class MongoController(object):
 		for k,v in kwargs.items():
 			if k == 'limit' or k == 'offset': continue
 			v = self.parse_value(v)
-			#import ipdb; ipdb.set_trace()
 			if '.' in k and k.split('.')[-1].startswith('$'):
 				x = k.split('.')
 				k,op = '.'.join(x[:-1]),x[-1]
@@ -44,6 +44,18 @@ class MongoController(object):
 		print flt
 		q = q.find(flt, fields)
 		return q
+
+	def parse_json_value(self, v):
+		try: return datetime.datetime.strptime(v,'%Y-%m-%dT%H:%M:%S')		
+		except: pass
+
+		try: return datetime.datetime.strptime(v,'%Y-%m-%d %H:%M:%S')
+		except: pass
+
+		return v
+
+	def parse_json_dict(self, d):
+		return dict((k,self.parse_json_value(v)) for k,v in d.items())
 
 	def parse_value(self, v):
 
@@ -63,6 +75,12 @@ class MongoController(object):
 		except: pass
 
 		return v
+
+	def OPTIONS(self, *args, **kwargs):
+		cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
+		if 'Access-Control-Request-Headers' in cherrypy.request.headers:
+			cherrypy.response.headers['Access-Control-Allow-Headers'] = cherrypy.request.headers['Access-Control-Request-Headers']
+		return "GET, POST"		
 
 	def build_response(self, status, message=None, **kwargs):
 		if status == 'ok':
@@ -106,7 +124,7 @@ class ProductTypesController(MongoController):
 		if name is not None:
 			if 'distinct' in kwargs:
 				q = Products.distinct(kwargs['distinct'])
-				return self.build_response('ok', **{'values': q})
+				return self.build_response('ok', **{'attribute': kwargs['distinct'], 'values': q})
 			else:
 				q = ProductTypes.find_one({'name':name})
 				return self.build_response('ok', **{self.name_singular: q})
@@ -182,7 +200,7 @@ class ProductsController(MongoController):
 	def POST(self, id=None, content=None, metadata=None, **kwargs):
 		if id is None:
 			if metadata is None: 
-				metadata = simplejson.load(cherrypy.request.body)
+				metadata = self.parse_json_dict(simplejson.load(cherrypy.request.body))
 			metadata['content_length'] = 0
 			id = Products.insert_one(metadata).inserted_id
 			return self.build_response('ok',**dict(product={'_id':id}))
@@ -197,7 +215,7 @@ class ProductsController(MongoController):
 				return self.build_response('error',message='cannot POST metadata for an existing product. Use PUT instead.')
 
 	def PUT(self, id, **kwargs):
-		metadata = simplejson.load(cherrypy.request.body)
+		metadata = self.parse_json_dict(simplejson.load(cherrypy.request.body))
 		Products.update_one({'_id':ObjectId(id)}, metadata)
 		return self.build_response('ok',**dict(product={'_id':id}))
 
@@ -249,7 +267,7 @@ class TransformationsController(MongoController):
 
 	def POST(self, id=None, outputs=None, **kwargs):
 		if id is None:
-			metadata = simplejson.load(cherrypy.request.body)
+			metadata = self.parse_json_dict(simplejson.load(cherrypy.request.body))
 			for inp in metadata.get("inputs",[]):
 				if '_id' in inp: inp['_id'] = self.parse_value(inp['_id'])
 
@@ -262,7 +280,7 @@ class TransformationsController(MongoController):
 
 		else:
 			if outputs == 'outputs':
-				metadata = simplejson.load(cherrypy.request.body)
+				metadata = self.parse_json_dict(simplejson.load(cherrypy.request.body))
 				resp = simplejson.loads(ProductsController().POST(id=None, metadata=metadata))
 				if resp['status'] != 'ok':
 					return self.build_response('error', 

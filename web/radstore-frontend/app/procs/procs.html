@@ -5,17 +5,33 @@
     <li ng-repeat="proc in procs">
       <b>{{proc.name}}</b>: {{proc.description}}
       <ul>
-        <li ng-repeat="transf in proc.transformations">
-          <a ng-click="show_form = proc.name+'/'+transf.name" 
+        <li ng-repeat="transf in proc.transformations" 
+            ng-init="id=proc.name+'/'+transf.name">
+          <a ng-click="show_form = id" 
               href="javascript:void(0);">{{transf.name}}</a>: {{transf.description}}
 
-          <table ng-show="show_form == proc.name+'/'+transf.name">
+          <table ng-repeat="exec in executions[id]">
+            <tr ng-repeat="param in exec.params">
+              <td><b>{{param.name}}</b>: </td>
+              <td>{{param.value}}</td>
+            </tr>
+            <tr><td>
+                <img src="http://www.kakao.com/assets/common/spinner.gif" width="40px" ng-show="exec.running"/>
+
+                <span style="background-color: lightblue; text-weight:bold">{{exec.result}}</span>
+            </td></tr>
+          </table>
+
+          <br/>
+          <table ng-show="show_form == id">
             <tr ng-repeat="inp in transf.inputs">
               <td>{{inp.name}}</td>
-              <td><input ng-model="params[inp.name]"></inout></td>
+              <td><input ng-model="params[id][inp.name]"></inout></td>
             </tr>
             <tr>
-              <td><button ng-click="runProc(proc.name,transf.name)">run</button></td>
+              <td>
+                <button ng-click="runProc(id)">run</button>
+              </td>
             </tr>
           </table>
         </li>

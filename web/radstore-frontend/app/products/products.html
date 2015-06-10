@@ -1,14 +1,23 @@
-<p>Productos</p>
+<h3>Productos</h3>
 
-Type:
-  <select ng-model="type" ng-change="changed()">
-    <option ng-repeat="type in types" value="{{type}}">{{type}}</option>
-  </select>
+<div>
+  <div>
+    <label>type</label>  
+    <select ng-model="type_filter.value" ng-change="type_changed()">      
+      <option ng-repeat="option in type_filter.options" value="{{option.value}}">{{option.name}}</option>
+    </select>
+  </div>
+  <br/>
+  <span ng-repeat="filter in filters" ng-if="filter.name != 'type'">
+    <label>{{filter.name}}</label>  
+    <select ng-model="current_filter[filter.name]" ng-change="changed()">
+      <option value="">-- all --</option>
+      <option ng-repeat="option in filter.options" value="{{option.value}}">{{option.name}}</option>
+    </select>
+  </span>
+</div>
 
-Variable: 
-  <select ng-model="variable" ng-change="changed()">
-    <option ng-repeat="var in variables" value="{{var}}">{{var}}</option>
-  </select>
+<br/>
 
 <div ng-controller="ProductsCtrl">
   <table border="1">
@@ -17,7 +26,8 @@ Variable:
         <th>id</th>
         <th ng-repeat="attr in product_attributes">{{attr}}</th>
         <th>transformations</th>
-      </tr>
+        <th>&nbsp;</th>
+      </tr>      
     </thead>
     <tr ng-repeat="product in products">
       <td><a ng-href="#/products/{{product._id}}">{{product._id}}</a></td>
@@ -26,6 +36,9 @@ Variable:
         <span ng-repeat="transf in product.transformations">
           <span ng-repeat="outp in transformations[transf._id]"><a ng-href="#/products/{{outp}}">{{outp|limitTo:5}}</a>&nbsp;</span>
         </span>&nbsp;        
+      </td>
+      <td>
+        <a ng-href="http://localhost:8080/api/v1/products/{{product._id}}/content">download</a>
       </td>
     </tr>
   </table>

@@ -17,11 +17,25 @@ angular.module('myApp.procs', ['ngRoute'])
 .controller('ProcsCtrl', function($scope, $http) {
 
   $scope.params = {};
-  
-  $scope.runProc = function(procName, transfName) {
-    $http.post('http://localhost:8080/api/v1/procs/'+procName+'/'+transfName, $scope.params)
+  $scope.result = {};
+  $scope.running = {};
+  $scope.executions = {};
+
+  $scope.runProc = function(id) {
+    if(!$scope.executions[id]) 
+      $scope.executions[id] = [];
+    var exec = {};
+    exec.running = true;        
+    exec.params = [];
+    for(var k in $scope.params[id]) {
+      exec.params.push({name: k, value: $scope.params[id][k]});
+    }
+    $scope.executions[id].push(exec);
+
+    $http.post('http://localhost:8080/api/v1/procs/'+id, $scope.params[id])
     .success(function(data) {
-      window.alert(data);
+      exec.running = false;
+      exec.result = data.status;
     });
   };
 

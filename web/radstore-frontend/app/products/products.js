@@ -16,12 +16,43 @@ angular.module('myApp.products', ['ngRoute'])
 
 .controller('ProductsCtrl', function($scope, $http) {
 
+  $scope.add_filter = function(typ,attr) {
+    $http.get('http://localhost:8080/api/v1/product_types/'+typ, 
+      {params: {distinct: attr}})
+    .success(function(data) {
+      $scope.filters.push({
+        name: attr, 
+        options: data.data.values.map(function(x){return {value:x,name:x}})
+      });
+    });
+  }
+
+  $scope.type_changed = function() {
+      $scope.filters = [];
+      $scope.current_filter = {};
+      var typ = $scope.type_filter.value;
+      $http.get('http://localhost:8080/api/v1/product_types/'+typ)
+      .success(function(data){
+        if(data.data.product_type.metadata) {
+          for(var fld in data.data.product_type.metadata) {
+            $scope.add_filter(typ,fld);
+          }
+        }
+      });
+      $scope.changed();
+  }
+
   $scope.changed = function() {
   
     $scope.transformations = {};
+    var flt = {};
+    for(var k in $scope.current_filter)
+      if($scope.current_filter[k].length > 0) 
+        flt[k] = $scope.current_filter[k];
+    flt.type = $scope.type_filter.value;
 
     $http.get('http://localhost:8080/api/v1/products', 
-        {params: {type: $scope.type, variable: $scope.variable}})
+        {params: flt})
     .success(function(data) {
 
       $scope.product_attributes = [];
@@ -50,19 +81,23 @@ angular.module('myApp.products', ['ngRoute'])
     });
   };
 
-
-  $http.get('http://localhost:8080/api/v1/product_types/vol', 
-    {params: {distinct: 'variable'}})
-  .success(function(data) {
-    $scope.variables = data.data.values;
-  });
-
   $http.get('http://localhost:8080/api/v1/product_types/vol', 
     {params: {distinct: 'type'}})
   .success(function(data) {
-    $scope.types = data.data.values;
+    $scope.type_filter = {
+      name: 'type',
+      value: null,
+      options: data.data.values.map(function(x){return {value:x,name:x}})
+    };
   });
 
+  /*
+  $scope.filters = [];
+  $scope.current_filter = {};
+
+  $scope.add_filter('vol','type');
+  $scope.add_filter('vol','variable');
+  */
 })
 
 

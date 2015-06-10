@@ -65,7 +65,7 @@ def upload(fname):
 		doc = {
 			'name': os.path.split(fname)[-1],
 			'type': 'vol',
-			'datetime': data['volume']['datetime'],
+			'datetime': data['volume']['datetime'].isoformat(),
 			'variable': data['volume']['scan']['slice'][0]['slicedata']['rawdata']['type'],
 			#'metadata': data['volume']
 		}
@@ -114,8 +114,14 @@ def main():
 	cmd = sys.argv[1]
 	param = sys.argv[2].split('=')
 	fname = param[1]
-	print fname
-	upload(fname)
+	if os.path.isdir(fname):
+		for fname2 in os.listdir(fname):
+			try:
+				upload(os.path.join(fname,fname2))
+			except Exception,e:
+				print "ERROR: %s" % e
+	else:
+		upload(fname)
 
 if __name__ == '__main__':
 	main()

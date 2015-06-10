@@ -12,6 +12,7 @@ class MongoDAO(object):
 		return self.coll
 
 	def find(self, *args, **kwargs):
+		print "%s, %s" % (args,kwargs)
 		return self.coll.find(*args, **kwargs)
 
 	def find_one(self, *args, **kwargs):

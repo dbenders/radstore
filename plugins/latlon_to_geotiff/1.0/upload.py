@@ -31,7 +31,7 @@ def upload(id,fname):
 	transformation_id = trans_data['data']['transformation']['_id']
 
 	output_metadata = {
-		'type': 'geotiff',
+		'type': 'geotiff.original',
 		'datetime': src['datetime'],
 		'variable': src['variable'],
 		'name': '%s.tif' % src['name'].split('.')[0],
