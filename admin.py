@@ -2,6 +2,8 @@ import subprocess
 import yaml
 import pymongo
 import os
+import subprocess
+
 
 client = pymongo.MongoClient()
 db = client['radar']
@@ -25,10 +27,36 @@ def import_plugins():
 		line = p.stdout.readline().strip()
 	print "done."
 
+def list_plugins():
+	print "Plugins available:"
+	for doc in db['plugin'].find():
+		print "\t%s" % doc['name']
+		for transf in doc['transformations']:
+			ln = transf['name']
+			if len(transf.get('inputs',[])) > 0:
+				ln += " " + " ".join("[%s=...]" % k['name'] for k in transf['inputs'])
+			print "\t\t%s" % ln
+	print ""
+
+def execute_plugin(plugin_name, transf_name, **kwargs):
+	plugin = db['plugin'].find_one({'name':plugin_name})
+	if plugin is None:
+		print  "plugin '%s' not found" % plugin_name
+		return
+
+	#q = Processes.find_one({'name':name})
+	params = ['%s=%s' % (k,v) for k,v in kwargs.items()]
+	cmdline =  plugin['executable'].split() + [transf_name] + params
+	print "(%s) %s" % (plugin['working_dir'],cmdline)
+	p = subprocess.Popen(cmdline, cwd=plugin['working_dir'])
+	out = p.communicate()
+
 def print_usage():
 	print "usage: python admin.py <command>"
 	print "where command is:"
 	print "\timport_plugins"
+	print "\tlist_plugins"
+	print "exec <plugin> <transf> [[param=value] [param=value] ...]"
 	print ""
 
 import sys
@@ -40,6 +68,10 @@ def main():
 	cmd = sys.argv[1]
 	if cmd == 'import_plugins':
 		import_plugins()
+	if cmd == 'list_plugins':
+		list_plugins()
+	if cmd == 'exec':
+		execute_plugin(sys.argv[2], sys.argv[3], **dict(x.split('=') for x in sys.argv[4:]))
 
 if __name__ == '__main__':
 	main()

@@ -1,7 +1,7 @@
 import pymongo
 import xmltodict
 import pymongo
-import gridfs
+#import gridfs
 import base64
 import zlib
 import re
@@ -107,13 +107,15 @@ def main():
 	
 
 	# clean all 
-	client.drop_database('radar')
-	os.system('rm fs/*')
+	#client.drop_database('radar')
+	#os.system('rm fs/*')
 	#db['product'].create_index([('id',pymongo.ASCENDING)],unique=True)
 
-	for fname in sys.argv[1:]:
-		print fname
-		upload(fname)
+	cmd = sys.argv[1]
+	param = sys.argv[2].split('=')
+	fname = param[1]
+	print fname
+	upload(fname)
 
 if __name__ == '__main__':
 	main()

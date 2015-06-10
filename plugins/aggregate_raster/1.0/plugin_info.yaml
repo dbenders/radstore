@@ -1,0 +1,21 @@
+plugin:
+  name: aggregate_raster
+  executable: venv/bin/python vol2csv.py
+  description: "diferentes métodos para combinar imágenes raster en una sola (max, min, etc)"
+  version: "1.0"
+
+product_types:
+  - name: geotiff
+
+transformations:
+  - name: aggregate
+    description: ""
+    inputs: 
+      - name: source
+        type: list(geotiff)
+      - name: operation
+        type: string
+      - name: output_metadata
+        type: string
+    outputs:
+      - type: geotiff

@@ -2,6 +2,7 @@ plugin:
   name: process_vol
   description: manipula archivos .vol
   version: "1.0"
+  executable: venv/bin/python upload_vol.py
 
 product_types:
   - name: vol
@@ -14,8 +15,9 @@ product_types:
 transformations:
   - name: import
     description: Sube un archivo .vol crudo.
-    parameters:
-      - fname       
+    inputs: 
+      - name: dir
+        type: vol
     outputs:
       - type: vol
 

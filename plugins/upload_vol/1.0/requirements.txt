@@ -1,0 +1,5 @@
+pymongo
+xmltodict
+simplejson
+python-dateutil
+requests

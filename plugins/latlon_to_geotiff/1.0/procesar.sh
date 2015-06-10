@@ -2,6 +2,7 @@
 
 #recibe como único parámetro los puntos
 product_id=`echo $2 | cut -f 2 -d =`
+
 los_puntos=los_puntos.csv
 tif=puntos.tif
 shp=puntos.shp
@@ -36,7 +37,7 @@ echo Rasterizar los puntos del barrido
 gdal_rasterize -ts 487 505 -a_nodata -99 -a dbz -l puntos ./${new_shp_name}/${shp}  ${tif}
 
 #Suavizar la imagen
-venv/bin/python completa-blancos.py ${tif} 2 max
+#venv/bin/python completa-blancos.py ${tif} 2 max
 
 #Sube 
 venv/bin/python upload.py ${product_id}

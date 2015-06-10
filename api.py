@@ -11,9 +11,6 @@ import subprocess
 
 from models import Products, Processes, Transformations, ProductTypes
 
-def CORS(): 
-  cherrypy.response.headers["Access-Control-Allow-Origin"] = "*"
-
 class MongoController(object):
 	DEFAULT_LIMIT = 20
 
@@ -303,9 +300,6 @@ class TransformationsController(MongoController):
 
 
 if __name__ == '__main__':
-
-    import cherrypy_cors
-    cherrypy_cors.install()
 
     cherrypy.tree.mount(
         ProductsController(), '/api/v1/products',
