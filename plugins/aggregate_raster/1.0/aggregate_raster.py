@@ -4,6 +4,9 @@ import datetime as dt
 import simplejson
 import subprocess
 import os
+import uuid
+import shutil
+
 
 def check_result(resp):
     if not resp.ok:
@@ -16,6 +19,15 @@ def check_result(resp):
         print "ERROR: %s" % resp_data['message']
         assert False
     return resp_data
+
+def op_tree(op, args):
+    if len(args) == 1: return args[0]
+    elif len(args) % 2 == 1:
+        l,r = args[0],op_tree(op,args[1:])
+    else:
+        m = len(args)/2
+        l,r = op_tree(op,args[:m]),op_tree(op,args[m:])
+    return "%s(%s,%s)" % (op,l,r)
 
 def aggregate(datetime, duration, operation, filters="{}", **kwargs):
 
@@ -33,14 +45,14 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
     resp = check_result(requests.get('http://localhost:8080/api/v1/products',url_params))
     params = {}
 
-    tmpdir = '/tmp/aggregate_raster/'
+    tmpdir = '/tmp/aggregate_raster/%s' % uuid.uuid1()
     try: os.makedirs(tmpdir)
     except: pass
 
     AlphaList=["A","B","C","D","E","F","G","H","I","J","K","L","M",
         "N","O","P","Q","R","S","T","U","V","W","X","Y","Z"]
 
-    cmdline = ['/usr/bin/python','/usr/bin/gdal_calc.py','--outfile','out.tiff','--overwrite']
+    cmdline = ['/usr/bin/python','/usr/bin/gdal_calc.py']
     params = {}
 
     transformation_metadata = {
@@ -71,15 +83,18 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
     else:
         ops = [operation]
 
+    cmdline_ori = cmdline
     for op in ops:
+        cmdline = [x for x in cmdline_ori]
+        cmdline.extend(['--outfile','%s.tiff' % op])
         if op == 'avg':
             cmdline.extend(['--calc','(%s)/%d' % ('+'.join(params.keys()),len(params))])
         elif op == 'max':
-            cmdline.extend(['--calc','maximum(%s)' % ','.join(params.keys())])      
+            cmdline.extend(['--calc',op_tree('fmax',params.keys())])
         elif op == 'min':
-            cmdline.extend(['--calc','minimum(%s)' % ','.join(params.keys())])      
+            cmdline.extend(['--calc',op_tree('fmin',params.keys())])
 
-        print cmdline
+        print ' '.join(cmdline)
         p = subprocess.Popen(cmdline, cwd=tmpdir)
         out = p.communicate()
 
@@ -88,9 +103,10 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
             'datetime': datetime,
             'duration': duration,
             'operation': op,
-            'name': '%s_%s_%s.tiff' % (datetime,duration,operation)
+            'name': '%s_%s_%s.tiff' % (datetime,duration,op)
         }
         output_metadata.update(filters)
+        output_metadata['duration'] = duration
 
         resp_data = check_result(
             requests.post('http://localhost:8080/api/v1/transformations/%s/outputs' % transformation_id,
@@ -98,11 +114,13 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
 
         output_id = resp_data['data']['product']['_id']
 
-        with open(os.path.join(tmpdir,'out.tiff')) as f:
+        with open(os.path.join(tmpdir,'%s.tiff' % op)) as f:
             data = f.read()
         resp_data = check_result(
             requests.post('http://localhost:8080/api/v1/products/%s/content' % output_id, 
                 data=data))
+
+    #shutil.rmtree(tmpdir)
 
 
 def process_arg(arg):

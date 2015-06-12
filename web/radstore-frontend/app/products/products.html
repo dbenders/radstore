@@ -20,6 +20,9 @@
 <br/>
 
 <div ng-controller="ProductsCtrl">
+  <div>
+    Total: <b>{{product_count}}</b>
+  </div>
   <table border="1">
     <thead>
       <tr>
@@ -34,7 +37,7 @@
       <td ng-repeat="attr in product_attributes">{{product[attr]}}</td>
       <td>
         <span ng-repeat="transf in product.transformations">
-          <span ng-repeat="outp in transformations[transf._id]"><a ng-href="#/products/{{outp}}">{{outp|limitTo:5}}</a>&nbsp;</span>
+          {{transf._id.substring(transf._id.length-5)}}</a>&nbsp;</span>
         </span>&nbsp;        
       </td>
       <td>

@@ -1,18 +1,18 @@
 #!/bin/bash
 
 #recibe como único parámetro los puntos
-product_id=`echo $2 | cut -f 2 -d =`
 
-tmpdir=/tmp/latlon_to_geotiff
-uuid=product_id #$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-tmpfile=${tmpdir}/${uuid}
+product_id=$1
+tmpdir=/tmp/latlon_to_geotiff/${product_id}
+uuid=${product_id} #$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+#tmpfile=${tmpdir}/${uuid}
 
-tsv=${tmpfile}.tsv
-csv=${tmpfile}.csv
-shp=${tmpfile}_shp
-tif=${tmpfile}.tif
+tsv=${tmpdir}/puntos.tsv
+csv=${tmpdir}/puntos.csv
+shp=${tmpdir}/puntos_shp
+tif=${tmpdir}/puntos.tif
 
-vrt=puntos.vrt
+vrt=${tmpdir}/puntos.vrt
 
 
 # new_shp_name=${UUID}.shp
@@ -22,7 +22,8 @@ vrt=puntos.vrt
 # csv=${UUID}.csv
 # tmp=${UUID}.tmp
 
-
+mkdir -p /tmp/latlon_to_geotiff
+rm -rf ${tmpdir}
 mkdir -p ${tmpdir}
 
 echo Descargando...
@@ -30,9 +31,10 @@ curl -o ${tsv} "http://localhost:8080/api/v1/products/${product_id}/content"
 
 echo Preparando datos...
 cat ${tsv} | sed 's/\s/,/g' > ${csv}
+cp ./puntos.vrt ${vrt}
   
 echo Convirtiendo a shp...
-ogr2ogr -f "ESRI Shapefile" ${shp} ${vrt}
+(cd ${tmpdir}; ogr2ogr -f "ESRI Shapefile" ${shp} ${vrt})
 
 echo Crear imagen en blanco...
 cp ./template-grilla-TM-LIMPIA.tif ${tif}
@@ -45,10 +47,11 @@ gdal_rasterize -ts 487 505 -a_nodata -99 -a dbz -l puntos ${shp}/puntos.shp  ${t
 #venv/bin/python completa-blancos.py ${tif} 2 max
 
 #Sube 
-venv/bin/python upload.py ${product_id}
+echo Subiendo ${product_id}...
+venv/bin/python upload.py ${product_id} ${tif}
 
 #borra
-rm -rf ${tmpdir}/${uuid}*
+rm -rf ${tmpdir}
 
 #cambia de disco los hechos
 #mv ${los_puntos} ${dir_hechos}

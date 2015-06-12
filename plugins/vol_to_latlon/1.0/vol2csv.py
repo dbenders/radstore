@@ -353,6 +353,10 @@ def convert(f_name):
                     requests.post('http://localhost:8080/api/v1/products/%s/content' % output_id, data=data))
 
 
+def parse_arg(arg):
+    i = arg.index('=')
+    return (arg[:i],arg[i+1:])
+
 import sys
 def main():
     cmd = sys.argv[1]
@@ -361,6 +365,13 @@ def main():
         if k == 'source':
             print "to_latlon %s" % v
             convert(v)
+    elif cmd == 'to_latlon_multiple':
+        params = dict(map(parse_arg, sys.argv[2:]))
+        resp = check_result(
+            requests.get('http://localhost:8080/api/v1/products?type=vol&%s' % params['query']))
+        for prod in resp['data']['products']:
+            print "to_latlon %s" % prod['_id']
+            convert(prod['_id'])
 
 
 # Cuerpo principal del Script

@@ -66,6 +66,7 @@ angular.module('myApp.products', ['ngRoute'])
       for(var i in data.data.products) {
         var prod = data.data.products[i];
 
+        /*
         for(var j in prod.transformations) {
           var transf = prod.transformations[j];
           $scope.transformations[transf._id] = ['...'];
@@ -76,8 +77,10 @@ angular.module('myApp.products', ['ngRoute'])
                 data.data.transformation.outputs.map(function(x){return x._id});
           });
         }
+        */
       }
       $scope.products = data.data.products;
+      $scope.product_count = data.data.count;
     });
   };
 

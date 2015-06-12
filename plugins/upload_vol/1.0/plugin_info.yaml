@@ -13,11 +13,18 @@ product_types:
       datetime: datetime      
 
 transformations:
-  - name: import
+  - name: import_file
     description: Sube un archivo .vol crudo.
     inputs: 
-      - name: dir
-        type: vol
+      - name: file
+        type: string
     outputs:
       - type: vol
-
+  - name: import_dir
+    inputs: 
+      - name: dir
+        type: string
+      - name: pattern
+        type: string
+    outputs:
+      - type: vol

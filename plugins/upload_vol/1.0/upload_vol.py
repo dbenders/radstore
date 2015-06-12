@@ -10,6 +10,7 @@ import dateutil.parser
 import datetime
 import os
 import requests
+import glob
 
 client = pymongo.MongoClient()
 db = client['radar']
@@ -112,16 +113,20 @@ def main():
 	#db['product'].create_index([('id',pymongo.ASCENDING)],unique=True)
 
 	cmd = sys.argv[1]
-	param = sys.argv[2].split('=')
-	fname = param[1]
-	if os.path.isdir(fname):
-		for fname2 in os.listdir(fname):
+	if cmd == "import_file":
+		param = sys.argv[2].split('=')
+		fname = param[1]
+		upload(fname)
+	elif cmd == "import_dir":
+		params = dict(x.split('=') for x in sys.argv[2:])
+		pattern = os.path.join(params['dir'],params.get('pattern',''))
+		for fname in glob.glob(pattern):
 			try:
-				upload(os.path.join(fname,fname2))
+				upload(fname)
 			except Exception,e:
 				print "ERROR: %s" % e
 	else:
-		upload(fname)
+		print "ERROR: Invalid command: %s" % cmd
 
 if __name__ == '__main__':
 	main()

@@ -9,6 +9,7 @@ import random
 import gzip
 import subprocess
 import datetime
+import pymongo
 
 from models import Products, Processes, Transformations, ProductTypes
 
@@ -123,7 +124,11 @@ class ProductTypesController(MongoController):
 	def GET(self, name=None, **kwargs):
 		if name is not None:
 			if 'distinct' in kwargs:
-				q = Products.distinct(kwargs['distinct'])
+				if kwargs['distinct'] == 'type': 
+					qq = {}
+				else:
+					qq = {'type':name}
+				q = Products.distinct(kwargs['distinct'], qq)
 				return self.build_response('ok', **{'attribute': kwargs['distinct'], 'values': q})
 			else:
 				q = ProductTypes.find_one({'name':name})
@@ -154,6 +159,7 @@ class ProductsController(MongoController):
 				q = []
 			else:
 				q = self.process_pagination_params(q, **kwargs)			
+			q = q.sort([('datetime',pymongo.ASCENDING)])
 			q = list(q)
 
 			# if 'transformations' in include:

@@ -52,7 +52,7 @@ def upload(id,fname):
 import sys
 def main():
 	print "uploading..."
-	upload(sys.argv[1],'puntos.tif')
+	upload(sys.argv[1],sys.argv[2])
 	print "done."
 
 if __name__ == '__main__':

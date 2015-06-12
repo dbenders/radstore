@@ -36,6 +36,10 @@ angular.module('myApp.procs', ['ngRoute'])
     .success(function(data) {
       exec.running = false;
       exec.result = data.status;
+    })
+    .error(function(data) {
+      exec.running = false;
+      exec.result = "error";
     });
   };
 

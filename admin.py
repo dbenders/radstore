@@ -19,7 +19,10 @@ def import_plugins():
 		doc = {'$set': data['plugin']}
 		
 		for transformation in data.get('transformations',[]):
-			doc['$addToSet'] = {'transformations':transformation}
+			if doc.get('$addToSet',{}).get('transformations') is not None:
+				doc['$addToSet']['transformations']['$each'].append(transformation)
+			else:
+ 				doc['$addToSet'] = {'transformations':{'$each': [transformation]}}
 		db['plugin'].update_one({'name':data['plugin']['name']},doc,upsert=True)
 
 		for product_type in data.get('product_types',[]):
