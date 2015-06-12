@@ -14,7 +14,7 @@ angular.module('myApp.procs', ['ngRoute'])
     })
 }])
 
-.controller('ProcsCtrl', function($scope, $http) {
+.controller('ProcsCtrl', function($scope, $http, $rootScope) {
 
   $scope.params = {};
   $scope.result = {};
@@ -32,7 +32,7 @@ angular.module('myApp.procs', ['ngRoute'])
     }
     $scope.executions[id].push(exec);
 
-    $http.post('http://localhost:8080/api/v1/procs/'+id, $scope.params[id])
+    $http.post($rootScope.api_url+'/procs/'+id, $scope.params[id])
     .success(function(data) {
       exec.running = false;
       exec.result = data.status;
@@ -43,7 +43,7 @@ angular.module('myApp.procs', ['ngRoute'])
     });
   };
 
-  $http.get('http://localhost:8080/api/v1/procs')
+  $http.get($rootScope.api_url+'/procs')
   .success(function(data) {
     console.log(data);    
     $scope.procs = data.data.processes;
@@ -52,9 +52,9 @@ angular.module('myApp.procs', ['ngRoute'])
 
 
 
-.controller('ProcCtrl', function($scope, $http, $routeParams) {
+.controller('ProcCtrl', function($scope, $http, $routeParams, $rootScope) {
 
-  $http.get('http://localhost:8080/api/v1/procs/'+$routeParams.id)
+  $http.get($rootScope.api_url+'/procs/'+$routeParams.id)
   .success(function(data) {
     $scope.proc = data.data.process;
   });

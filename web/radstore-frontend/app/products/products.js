@@ -14,10 +14,10 @@ angular.module('myApp.products', ['ngRoute'])
     })
 }])
 
-.controller('ProductsCtrl', function($scope, $http) {
+.controller('ProductsCtrl', function($scope, $http, $rootScope) {
 
   $scope.add_filter = function(typ,attr) {
-    $http.get('http://localhost:8080/api/v1/product_types/'+typ, 
+    $http.get($rootScope.api_url+'/product_types/'+typ, 
       {params: {distinct: attr}})
     .success(function(data) {
       $scope.filters.push({
@@ -31,7 +31,7 @@ angular.module('myApp.products', ['ngRoute'])
       $scope.filters = [];
       $scope.current_filter = {};
       var typ = $scope.type_filter.value;
-      $http.get('http://localhost:8080/api/v1/product_types/'+typ)
+      $http.get($rootScope.api_url+'/product_types/'+typ)
       .success(function(data){
         if(data.data.product_type.metadata) {
           for(var fld in data.data.product_type.metadata) {
@@ -51,7 +51,7 @@ angular.module('myApp.products', ['ngRoute'])
         flt[k] = $scope.current_filter[k];
     flt.type = $scope.type_filter.value;
 
-    $http.get('http://localhost:8080/api/v1/products', 
+    $http.get($rootScope.api_url+'/products', 
         {params: flt})
     .success(function(data) {
 
@@ -84,7 +84,7 @@ angular.module('myApp.products', ['ngRoute'])
     });
   };
 
-  $http.get('http://localhost:8080/api/v1/product_types/vol', 
+  $http.get($rootScope.api_url+'/product_types/vol', 
     {params: {distinct: 'type'}})
   .success(function(data) {
     $scope.type_filter = {
@@ -93,6 +93,8 @@ angular.module('myApp.products', ['ngRoute'])
       options: data.data.values.map(function(x){return {value:x,name:x}})
     };
   });
+
+  $scope.api_url = $rootScope.api_url;
 
   /*
   $scope.filters = [];
@@ -106,7 +108,7 @@ angular.module('myApp.products', ['ngRoute'])
 
 
 .controller('ProductCtrl', function($scope, $http, $routeParams) {
-  $http.get('http://localhost:8080/api/v1/products/'+$routeParams.id)
+  $http.get($rootScope.api_url+'/products/'+$routeParams.id)
   .success(function(data) {
     $scope.attributes = [];
     for(var k in data.data.product) {
