@@ -1,6 +1,6 @@
 plugin:
   name: latlon_to_geotiff
-  executable: /bin/sh ./plugin.sh
+  executable: /bin/bash ./plugin.sh
   description: genera un archivo .tif a partir de un archivo .csv con coordenadas geográficas
   version: "1.0"
 
@@ -11,6 +11,8 @@ product_types:
     mime_type: image/tiff
     metadata: 
       slice: int
+      variable: string
+      datetime: datetime      
 
 transformations:
   - name: to_geotiff

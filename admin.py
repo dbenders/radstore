@@ -62,6 +62,10 @@ def print_usage():
 	print "exec <plugin> <transf> [[param=value] [param=value] ...]"
 	print ""
 
+def parse_param(p):
+	i = p.index('=')
+	return p[:i],p[i+1:]
+
 import sys
 def main():
 	if len(sys.argv) < 2: 
@@ -74,7 +78,7 @@ def main():
 	if cmd == 'list_plugins':
 		list_plugins()
 	if cmd == 'exec':
-		execute_plugin(sys.argv[2], sys.argv[3], **dict(x.split('=') for x in sys.argv[4:]))
+		execute_plugin(sys.argv[2], sys.argv[3], **dict(map(parse_param, sys.argv[4:])))
 
 if __name__ == '__main__':
 	main()

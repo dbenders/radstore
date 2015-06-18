@@ -7,6 +7,7 @@ import os
 import uuid
 import shutil
 
+api_url = 'http://127.0.0.1:3003/api/v1'
 
 def check_result(resp):
     if not resp.ok:
@@ -42,7 +43,7 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
     filters = simplejson.loads(filters)
     url_params.update(filters)
     print url_params
-    resp = check_result(requests.get('http://localhost:8080/api/v1/products',url_params))
+    resp = check_result(requests.get(api_url+'/products',url_params))
     params = {}
 
     tmpdir = '/tmp/aggregate_raster/%s' % uuid.uuid1()
@@ -62,7 +63,7 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
     }
 
     for i,prod in enumerate(resp['data']['products']):
-        resp = requests.get('http://localhost:8080/api/v1/products/%s/content' % prod['_id'])
+        resp = requests.get('%s/products/%s/content' % (api_url,prod['_id']))
         fname = '%s.tiff' % AlphaList[i]
         with open(os.path.join(tmpdir,fname), 'w') as fo:
             fo.write(resp.content)
@@ -73,7 +74,7 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
 
 
     resp_data = check_result(
-        requests.post('http://localhost:8080/api/v1/transformations', 
+        requests.post('%s/transformations' % api_url, 
             data=simplejson.dumps(transformation_metadata, default=str)))
     transformation_id = resp_data['data']['transformation']['_id']
 
@@ -109,7 +110,7 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
         output_metadata['duration'] = duration
 
         resp_data = check_result(
-            requests.post('http://localhost:8080/api/v1/transformations/%s/outputs' % transformation_id,
+            requests.post('%s/transformations/%s/outputs' % (api_url,transformation_id),
                 data=simplejson.dumps(output_metadata,default=str)))
 
         output_id = resp_data['data']['product']['_id']
@@ -117,10 +118,10 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
         with open(os.path.join(tmpdir,'%s.tiff' % op)) as f:
             data = f.read()
         resp_data = check_result(
-            requests.post('http://localhost:8080/api/v1/products/%s/content' % output_id, 
+            requests.post('%s/products/%s/content' % (api_url,output_id), 
                 data=data))
 
-    #shutil.rmtree(tmpdir)
+    shutil.rmtree(tmpdir)
 
 
 def process_arg(arg):

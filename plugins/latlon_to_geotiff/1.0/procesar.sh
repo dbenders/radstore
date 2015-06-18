@@ -14,6 +14,8 @@ tif=${tmpdir}/puntos.tif
 
 vrt=${tmpdir}/puntos.vrt
 
+api_url='http://127.0.0.1:3003/api/v1'
+
 
 # new_shp_name=${UUID}.shp
 # los_puntos=${UUID}.sv
@@ -27,7 +29,7 @@ rm -rf ${tmpdir}
 mkdir -p ${tmpdir}
 
 echo Descargando...
-curl -o ${tsv} "http://localhost:8080/api/v1/products/${product_id}/content"
+curl -o ${tsv} "${api_url}/products/${product_id}/content"
 
 echo Preparando datos...
 cat ${tsv} | sed 's/\s/,/g' > ${csv}

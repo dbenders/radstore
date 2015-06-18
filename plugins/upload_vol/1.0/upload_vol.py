@@ -14,14 +14,14 @@ import glob
 
 client = pymongo.MongoClient()
 db = client['radar']
+api_url='http://127.0.0.1:3003/api/v1'
 
 def process_blob(blob):
 	return zlib.decompress(blob[4:])
 
 def process_metadata(val):
 	if isinstance(val,dict):
-		return dict((k.replace('@',''),process_metadata(v))
-			for k,v in val.iteritems())
+		return dict((k.replace('@',''),process_metadata(v)) for k,v in val.iteritems())
 
 	elif isinstance(val,list):
 		return map(process_metadata, val)
@@ -55,6 +55,7 @@ def process_metadata(val):
 
 
 def upload(fname):
+	print fname
 	with open(fname) as f:
 		t = ''
 		for line in f:
@@ -74,13 +75,13 @@ def upload(fname):
 		# asdffdsa
 
 		#result = db['product'].insert_one(doc)
-		resp = requests.post('http://localhost:8080/api/v1/products', 
+		resp = requests.post(api_url+'/products', 
 			headers={'Content-Type':'application/json'}, data=simplejson.dumps(doc, default=str))
 
 		data = simplejson.loads(resp.text)
 
 		id = data['data']['product']['_id']
-		requests.post('http://localhost:8080/api/v1/products/%s/content' % id, data=open(fname).read())
+		requests.post(api_url+'/products/%s/content' % id, data=open(fname).read())
 
 		# blob = None
 		# blobdata = None

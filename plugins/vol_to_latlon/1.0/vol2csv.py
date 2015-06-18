@@ -239,6 +239,7 @@ import requests
 import simplejson
 import datetime
 
+api_url = 'http://127.0.0.1:3003/api/v1'
 
 def check_result(resp):
     if not resp.ok:
@@ -258,7 +259,7 @@ def convert(f_name):
     #Receives as argument the name of the file .vol to be processed 
     #f_name = sys.argv[1]
     
-    f = urllib.urlopen('http://localhost:8080/api/v1/products/%s/content' % f_name)
+    f = urllib.urlopen(api_url+'/products/%s/content' % f_name)
     #f = open(f_name,'rb')
     xml_header = get_header_vol(f)
     blobs = get_blobs(f)
@@ -280,7 +281,7 @@ def convert(f_name):
     bandas = []
     grados = []
 
-    resp_data = check_result(requests.get('http://localhost:8080/api/v1/products/%s' % f_name))
+    resp_data = check_result(requests.get(api_url+'/products/%s' % f_name))
     src = resp_data['data']['product']
 
     transformation_metadata = {
@@ -289,7 +290,7 @@ def convert(f_name):
         'inputs': [{'_id':src['_id']}]
     }
     resp_data = check_result(
-        requests.post('http://localhost:8080/api/v1/transformations', data=simplejson.dumps(transformation_metadata, default=str)))
+        requests.post(api_url+'/transformations', data=simplejson.dumps(transformation_metadata, default=str)))
 
     transformation_id = resp_data['data']['transformation']['_id']
 
@@ -323,7 +324,7 @@ def convert(f_name):
                 }
 
                 resp_data = check_result(
-                    requests.post('http://localhost:8080/api/v1/transformations/%s/outputs' % transformation_id,
+                    requests.post(api_url+'/transformations/%s/outputs' % transformation_id,
                         data=simplejson.dumps(output_metadata,default=str)))
 
                 output_id = resp_data['data']['product']['_id']
@@ -350,7 +351,7 @@ def convert(f_name):
                         values.append(blobs_img[ray][bi])
                 #fo.close()
                 resp_data = check_result(
-                    requests.post('http://localhost:8080/api/v1/products/%s/content' % output_id, data=data))
+                    requests.post(api_url+'/products/%s/content' % output_id, data=data))
 
 
 def parse_arg(arg):
@@ -367,8 +368,9 @@ def main():
             convert(v)
     elif cmd == 'to_latlon_multiple':
         params = dict(map(parse_arg, sys.argv[2:]))
+
         resp = check_result(
-            requests.get('http://localhost:8080/api/v1/products?type=vol&%s' % params['query']))
+            requests.get(api_url+'/products?type=vol&%s' % params['query']))
         for prod in resp['data']['products']:
             print "to_latlon %s" % prod['_id']
             convert(prod['_id'])

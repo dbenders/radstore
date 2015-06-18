@@ -39,7 +39,8 @@ class MongoController(object):
 				k,op = '.'.join(x[:-1]),x[-1]
 				#if op == 'in': flt[k] = {'$in': v} #[self.parse_value(x) for x in v.split(',')]}
 				#else: flt[k] = {'$' + op: v}
-				flt[k] = {op: v}
+				if k not in flt: flt[k] = {}
+				flt[k][op] = v
 			else:
 				flt[k] = v
 		print flt
@@ -347,6 +348,9 @@ if __name__ == '__main__':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         }        
     )
+    cherrypy.config.update({'server.socket_host': '0.0.0.0',
+                        'server.socket_port': 3003,
+                       })
     cherrypy.engine.start()
     cherrypy.engine.block()
 

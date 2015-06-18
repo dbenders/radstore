@@ -2,6 +2,9 @@ import requests
 import simplejson
 import datetime
 
+
+api_url = 'http://127.0.0.1:3003/api/v1'
+
 def check_result(resp):
 	if not resp.ok:
 		print "ERROR: %d: %s" % (resp.status_code, resp.reason)
@@ -17,7 +20,7 @@ def check_result(resp):
 
 def upload(id,fname):
 	src = check_result(
-		requests.get('http://localhost:8080/api/v1/products/%s' % id))['data']['product']
+		requests.get('%s/products/%s' % (api_url,id)))['data']['product']
 
 	transformation_metadata = {
 		'datetime': datetime.datetime.now(),
@@ -25,7 +28,7 @@ def upload(id,fname):
 		'inputs': [{'_id':src['_id']}]
 	}
 	trans_data = check_result(
-		requests.post('http://localhost:8080/api/v1/transformations', 
+		requests.post('%s/transformations' % api_url, 
 		 data=simplejson.dumps(transformation_metadata, default=str)))
 
 	transformation_id = trans_data['data']['transformation']['_id']
@@ -39,14 +42,14 @@ def upload(id,fname):
 	}
 
 	resp_data = check_result(
-		requests.post('http://localhost:8080/api/v1/transformations/%s/outputs' % transformation_id,
+		requests.post('%s/transformations/%s/outputs' % (api_url,transformation_id),
 			data=simplejson.dumps(output_metadata,default=str)))
 
 	output_id = resp_data['data']['product']['_id']
 
 	data = open(fname).read()
 	resp_data = check_result(
-		requests.post('http://localhost:8080/api/v1/products/%s/content' % output_id, data=data))
+		requests.post('%s/products/%s/content' % (api_url,output_id), data=data))
 
 
 import sys
