@@ -238,29 +238,15 @@ import urllib
 import requests
 import simplejson
 import datetime
+import radstore_client
+import os
+from StringIO import StringIO
 
-api_url = 'http://127.0.0.1:3003/api/v1'
+radstore_client.config.base_url = os.environ.get('RADSTORE_API_URL','http://127.0.0.1:3003/api/v1')
 
-def check_result(resp):
-    if not resp.ok:
-        print "ERROR: %d: %s" % (resp.status_code, resp.reason)
-        print resp.text
-        assert False
-
-    resp_data = simplejson.loads(resp.text)
-    if resp_data['status'] != 'ok':
-        print "ERROR: %s" % resp_data['message']
-        assert False
-    return resp_data
-
-
-def convert(f_name):    
-    #Se recibe como argumento el nombre del archivo .vol a procesar
-    #Receives as argument the name of the file .vol to be processed 
-    #f_name = sys.argv[1]
-    
-    f = urllib.urlopen(api_url+'/products/%s/content' % f_name)
-    #f = open(f_name,'rb')
+def convert(prod):    
+  
+    f = StringIO(prod.content)
     xml_header = get_header_vol(f)
     blobs = get_blobs(f)
 
@@ -281,19 +267,10 @@ def convert(f_name):
     bandas = []
     grados = []
 
-    resp_data = check_result(requests.get(api_url+'/products/%s' % f_name))
-    src = resp_data['data']['product']
-
-    transformation_metadata = {
-        'datetime': datetime.datetime.now(),
-        'process': 'vol2latlon',
-        'inputs': [{'_id':src['_id']}]
-    }
-    resp_data = check_result(
-        requests.post(api_url+'/transformations', data=simplejson.dumps(transformation_metadata, default=str)))
-
-    transformation_id = resp_data['data']['transformation']['_id']
-
+    transf = radstore_client.Transformation()
+    transf.datetime = datetime.datetime.now()
+    transf.process = 'vol2latlon'
+    transf.add_input(prod)
     
     for i,bl in enumerate(blobs):
 
@@ -305,76 +282,64 @@ def convert(f_name):
             startangle, grados = get_angulos(up)
                
         if i % 2 <> 0:
-                print 'Blob',i,len(up) - bins,azimth*bins,len(up) - bins==azimth*bins
-                if tipoArchivo in ['KDP','PhiDP']:
-					blobs_img = get_matriz_vol_16b(up, tipoArchivo)
-                else:
-					blobs_img = get_matriz_vol(up, tipoArchivo)
-			            
-                
-                #TODO: de acuerdo a lo indicado por el usuario convertir a geográficas y guardar
-                #o dejar el polares y guardar.
+            print 'Blob',i,len(up) - bins,azimth*bins,len(up) - bins==azimth*bins
+            if tipoArchivo in ['KDP','PhiDP']:
+				blobs_img = get_matriz_vol_16b(up, tipoArchivo)
+            else:
+				blobs_img = get_matriz_vol(up, tipoArchivo)
+		            
+            
+            #TODO: de acuerdo a lo indicado por el usuario convertir a geográficas y guardar
+            #o dejar el polares y guardar.
 
-                output_metadata = {
-                    'type': 'csv.latlon',
-                    'datetime': src['datetime'],
-                    'variable': src['variable'],
-                    'name': '%s_%i.csv' % (src['name'].split('.')[0], i),
-                    'slice': i
-                }
+            if radstore_client.Product.query().filter(
+                type='csv.latlon', datetime=prod.datetime, variable=prod.variable, slice=i).count() > 1:
+                    print "exists"
+                    continue
 
-                resp_data = check_result(
-                    requests.post(api_url+'/transformations/%s/outputs' % transformation_id,
-                        data=simplejson.dumps(output_metadata,default=str)))
+            outp = prod.copy()
+            outp.type = 'csv.latlon'
+            outp.name = '%s_%i.csv' % (prod.name.split('.')[0], i)
+            outp.slice = i
+            outp.save()
 
-                output_id = resp_data['data']['product']['_id']
+            data = 'lon lat dbz\n'
+            
+            aux_a = blobs_img[:round(360 - startangle)]
+            aux_b = blobs_img[round(360 - startangle):]
+            blobs_img = array(list(aux_b)+list(aux_a))
+            
+            points = []
+            values = []
+            
+            for ray in grados:
+                for bi in range(bins):
+                    y = lat + ((bi*0.5)/m) * cos((ray)*pi/180)
+                    x = lon + ((bi*0.5)/m) * sin((ray)*pi/180)/cos( y * pi/180)
+                                            
+                    points.append([x,y])
+                    #fo.write("%f %f %f\n" %(x,y,blobs_img[ray][bi]))
+                    data += "%f %f %f\n" %(x,y,blobs_img[ray][bi])
+                    values.append(blobs_img[ray][bi])
 
-                #fo = open(sys.argv[1]+'_%i.txt'%i,'wb')
-                #fo.write('lon lat dbz\n')
-                data = 'lon lat dbz\n'
-                
-                aux_a = blobs_img[:round(360 - startangle)]
-                aux_b = blobs_img[round(360 - startangle):]
-                blobs_img = array(list(aux_b)+list(aux_a))
-                
-                points = []
-                values = []
-                
-                for ray in grados:
-                    for bi in range(bins):
-                        y = lat + ((bi*0.5)/m) * cos((ray)*pi/180)
-                        x = lon + ((bi*0.5)/m) * sin((ray)*pi/180)/cos( y * pi/180)
-                                                
-                        points.append([x,y])
-                        #fo.write("%f %f %f\n" %(x,y,blobs_img[ray][bi]))
-                        data += "%f %f %f\n" %(x,y,blobs_img[ray][bi])
-                        values.append(blobs_img[ray][bi])
-                #fo.close()
-                resp_data = check_result(
-                    requests.post(api_url+'/products/%s/content' % output_id, data=data))
+            outp.content = data
+            outp.save_content()
+            transf.add_output(outp)
 
-
-def parse_arg(arg):
-    i = arg.index('=')
-    return (arg[:i],arg[i+1:])
+    transf.save()        
 
 import sys
 def main():
-    cmd = sys.argv[1]
+    cmd, args = radstore_client.parse_cmdline(sys.argv)
     if cmd == 'to_latlon':
-        k,v = sys.argv[2].split('=')
-        if k == 'source':
-            print "to_latlon %s" % v
-            convert(v)
+        print "to_latlon %s" % args['source']
+        prod = radstore_client.Product.get(args['source'])
+        convert(prod)
     elif cmd == 'to_latlon_multiple':
-        params = dict(map(parse_arg, sys.argv[2:]))
-
-        resp = check_result(
-            requests.get(api_url+'/products?type=vol&%s' % params['query']))
-        for prod in resp['data']['products']:
-            print "to_latlon %s" % prod['_id']
-            convert(prod['_id'])
-
+        q = json.loads(params['query'])
+        for prod in radstore_client.Product.query().filter(type='vol', **q).all():
+            print "to_latlon %s" % prod._id
+            convert(prod)
 
 # Cuerpo principal del Script
 if __name__ == '__main__':

@@ -28,6 +28,13 @@ mkdir -p /tmp/latlon_to_geotiff
 rm -rf ${tmpdir}
 mkdir -p ${tmpdir}
 
+echo Chequeando si existe...
+venv/bin/python util.py exists ${product_id}
+if [ $? -eq 1 ]; then
+	echo Ya existe, saliendo.
+	exit
+fi
+
 echo Descargando...
 curl -o ${tsv} "${api_url}/products/${product_id}/content"
 
@@ -46,11 +53,11 @@ echo Rasterizar los puntos del barrido...
 gdal_rasterize -ts 487 505 -a_nodata -99 -a dbz -l puntos ${shp}/puntos.shp  ${tif}
 
 #Suavizar la imagen
-#venv/bin/python completa-blancos.py ${tif} 2 max
+venv/bin/python completa-blancos.py ${tif} 2 max
 
 #Sube 
 echo Subiendo ${product_id}...
-venv/bin/python upload.py ${product_id} ${tif}
+venv/bin/python util.py upload ${product_id} ${tif}
 
 #borra
 rm -rf ${tmpdir}

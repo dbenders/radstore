@@ -9,12 +9,11 @@ import simplejson
 import dateutil.parser
 import datetime
 import os
-import requests
 import glob
+import radstore_client
 
-client = pymongo.MongoClient()
-db = client['radar']
-api_url='http://127.0.0.1:3003/api/v1'
+radstore_client.config.base_url = os.environ.get('RADSTORE_API_URL','http://127.0.0.1:3003/api/v1')
+
 
 def process_blob(blob):
 	return zlib.decompress(blob[4:])
@@ -64,24 +63,20 @@ def upload(fname):
 		data = xmltodict.parse(t)
 		data = process_metadata(data)
 
-		doc = {
-			'name': os.path.split(fname)[-1],
-			'type': 'vol',
-			'datetime': data['volume']['datetime'].isoformat(),
-			'variable': data['volume']['scan']['slice'][0]['slicedata']['rawdata']['type'],
-			#'metadata': data['volume']
-		}
-		# print simplejson.dumps(data, indent=3, default=lambda x:str(x))
-		# asdffdsa
+		if radstore_client.Product.query().filter(type='vol',name=os.path.split(fname)[-1]).count() > 0:
+			print "\tEXISTS"
+			return
 
-		#result = db['product'].insert_one(doc)
-		resp = requests.post(api_url+'/products', 
-			headers={'Content-Type':'application/json'}, data=simplejson.dumps(doc, default=str))
+		prod = radstore_client.Product()
+		prod.name = os.path.split(fname)[-1]
+		prod.type = 'vol'
+		prod.datetime = data['volume']['datetime']
+		prod.variable = data['volume']['scan']['slice'][0]['slicedata']['rawdata']['type']
 
-		data = simplejson.loads(resp.text)
+		prod.save()
 
-		id = data['data']['product']['_id']
-		requests.post(api_url+'/products/%s/content' % id, data=open(fname).read())
+		prod.content = open(fname).read()
+		prod.save_content()
 
 		# blob = None
 		# blobdata = None
@@ -106,21 +101,14 @@ def upload(fname):
 		
 import sys
 def main():
-	
-
+	cmd, args = radstore_client.parse_cmdline(sys.argv)
 	# clean all 
-	#client.drop_database('radar')
 	#os.system('rm fs/*')
-	#db['product'].create_index([('id',pymongo.ASCENDING)],unique=True)
 
-	cmd = sys.argv[1]
 	if cmd == "import_file":
-		param = sys.argv[2].split('=')
-		fname = param[1]
-		upload(fname)
-	elif cmd == "import_dir":
-		params = dict(x.split('=') for x in sys.argv[2:])
-		pattern = os.path.join(params['dir'],params.get('pattern',''))
+		upload(args['file'])
+	elif cmd == "import_dir":		
+		pattern = os.path.join(args['dir'],args.get('pattern',''))
 		for fname in glob.glob(pattern):
 			try:
 				upload(fname)

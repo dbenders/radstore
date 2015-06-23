@@ -6,20 +6,9 @@ import subprocess
 import os
 import uuid
 import shutil
+import radstore_client
 
-api_url = 'http://127.0.0.1:3003/api/v1'
-
-def check_result(resp):
-    if not resp.ok:
-        print "ERROR: %d: %s" % (resp.status_code, resp.reason)
-        print resp.text
-        assert False
-
-    resp_data = simplejson.loads(resp.text)
-    if resp_data['status'] != 'ok':
-        print "ERROR: %s" % resp_data['message']
-        assert False
-    return resp_data
+radstore_client.config.base_url = os.environ.get('RADSTORE_API_URL','http://127.0.0.1:3003/api/v1')
 
 def op_tree(op, args):
     if len(args) == 1: return args[0]
@@ -42,8 +31,8 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
 
     filters = simplejson.loads(filters)
     url_params.update(filters)
-    print url_params
-    resp = check_result(requests.get(api_url+'/products',url_params))
+
+    prods = radstore_client.Product.query().filter(**url_params)
     params = {}
 
     tmpdir = '/tmp/aggregate_raster/%s' % uuid.uuid1()
@@ -56,28 +45,18 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
     cmdline = ['/usr/bin/python','/usr/bin/gdal_calc.py']
     params = {}
 
-    transformation_metadata = {
-        'datetime': dt.datetime.now(),
-        'process': 'aggregate_raster',
-        'inputs': []
-    }
+    transf = radstore_client.Transformation()
+    transf.datetime = dt.datetime.now()
+    transf.process = aggregate_raster
 
-    for i,prod in enumerate(resp['data']['products']):
-        resp = requests.get('%s/products/%s/content' % (api_url,prod['_id']))
+    for i,prod in enumerate(prods):
         fname = '%s.tiff' % AlphaList[i]
         with open(os.path.join(tmpdir,fname), 'w') as fo:
-            fo.write(resp.content)
+            fo.write(prod.content)
         params[AlphaList[i]] = fname
-        transformation_metadata['inputs'].append({'_id':prod['_id']})
+        transf.add_input(prod)
     
     for k,v in params.items(): cmdline.extend(['-%s' % k, v])
-
-
-    resp_data = check_result(
-        requests.post('%s/transformations' % api_url, 
-            data=simplejson.dumps(transformation_metadata, default=str)))
-    transformation_id = resp_data['data']['transformation']['_id']
-
 
     if operation == 'all':
         ops = ['avg','max','min']
@@ -99,42 +78,30 @@ def aggregate(datetime, duration, operation, filters="{}", **kwargs):
         p = subprocess.Popen(cmdline, cwd=tmpdir)
         out = p.communicate()
 
-        output_metadata = {
-            'type': 'geotiff.aggregated',
-            'datetime': datetime,
-            'duration': duration,
-            'operation': op,
-            'name': '%s_%s_%s.tiff' % (datetime,duration,op)
-        }
-        output_metadata.update(filters)
-        output_metadata['duration'] = duration
+        outp = radstore.Product()
+        outp.type = 'geotiff.aggregated'
+        outp.datetime = datetime
+        outp.operation = op
+        outp.name = '%s_%s_%s.tiff' % (datetime,duration,op)
+        for k,v in filters.items():
+            setattr(outp,k,v)
+        outp.duration = duration
 
-        resp_data = check_result(
-            requests.post('%s/transformations/%s/outputs' % (api_url,transformation_id),
-                data=simplejson.dumps(output_metadata,default=str)))
-
-        output_id = resp_data['data']['product']['_id']
-
+        outp.save()
         with open(os.path.join(tmpdir,'%s.tiff' % op)) as f:
-            data = f.read()
-        resp_data = check_result(
-            requests.post('%s/products/%s/content' % (api_url,output_id), 
-                data=data))
+            outp.content = f.read()
+        outp.save_content()
+        transf.add_output(outp)
 
+    transf.save()
     shutil.rmtree(tmpdir)
 
 
-def process_arg(arg):
-    p = arg.split('=')
-    k,v = p[0], '='.join(p[1:])
-    #if ',' in v: v = v.split(',')
-    return k,v
-
 import sys
 def main():
-    cmd = sys.argv[1]
+    cmd,args = radstore_client.parse_cmdline(sys.argv)
     if cmd == 'aggregate':
-        aggregate(**dict(map(process_arg, sys.argv[2:])))
+        aggregate(**args)
 
 if __name__ == '__main__':
     main()
