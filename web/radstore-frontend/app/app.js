@@ -5,11 +5,13 @@ angular.module('myApp', [
   'ngRoute',
   'myApp.products',
   'myApp.procs',
-  'myApp.version'
+  'myApp.query',
+  'myApp.version',
+  'ui.bootstrap'
 ]).
 run(function($rootScope) {
     $rootScope.api_url = 'http://52.24.67.166:3003/api/v1';
 }).
 config(['$routeProvider', function($routeProvider) {
-  $routeProvider.otherwise({redirectTo: '/products'});
+  $routeProvider.otherwise({redirectTo: '/consulta'});
 }]);

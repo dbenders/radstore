@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en" ng-app="QueryApp">
+<head>
+  <meta charset="utf-8">
+  <title>My HTML File</title>
+    <script type="text/javascript" src="bower_components/jquery/dist/jquery.min.js"></script>
+    <script type="text/javascript" src="bower_components/moment/min/moment.min.js"></script>
+    <script type="text/javascript" src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="bower_components/eonasdan-bootstrap-datetimepicker/build/js/bootstrap-datetimepicker.min.js"></script>
+    <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="bower_components/eonasdan-bootstrap-datetimepicker/build/css/bootstrap-datetimepicker.min.css" />    
+    <script src="bower_components/angular/angular.js"></script>
+    <script src="query/query.js"></script>
+</head>
+
+<body>
+
+  <nav class="navbar navbar-inverse" style="border-radius:0px">
+    <div class="navbar-header"><div class="navbar-brand">RadStore</div></div>
+
+    <ul class="nav navbar-nav pull-right">
+      <li class="active"><a href="#">Consultas</a></li>
+      <li><a href="#">Acerca de</a></li>
+      <li><a href="#">Contacto</a></li>
+    </ul>
+  </nav>
+
+  <div class="container" ng-controller="QueryCtrl">
+
+    <div class="page-header">
+      <h3>Consulta de datos de radar</h3>
+    </div>
+    
+    <div class="row">
+      <div class="col-lg-6">
+        <form>
+          <div class="form-group col-md-4">
+            <label for="variable">Formato</label>
+            <select ng-model="current_filter.format" class="form-control" id="format">
+              <option value="vol">VOL</option>
+              <option value="csv.latlon">CSV</option>
+              <option value="geotiff.original">GeoTIFF</option>
+            </select>
+          </div>
+
+          <div class="form-group col-md-4">
+            <label for="variable">Variable</label>
+            <select ng-model="current_filter.variable" class="form-control" id="variable">
+              <option>dBZ</option>
+              <option>KDP</option>
+              <option>ZDR</option>
+              <option>RhoHV</option>
+              <option>PhiDP</option>
+              <option>uPhiDP</option>
+            </select>
+          </div>
+
+          <div ng-style="{visibility: current_filter.format == 'vol' && 'hidden' || 'visible'}" class="form-group col-md-4">          
+            <label for="variable">Slice</label>
+            <select ng-model="current_filter.slice" class="form-control" id="slice" ng-disabled="current_filter.format == 'vol'">
+              <option value="">Todos</option>
+              <option>1</option>
+              <option>3</option>
+              <option>5</option>
+              <option>7</option>
+              <option>9</option>
+              <option>11</option>
+            </select>
+          </div>
+
+          <div class="form-group col-md-4">
+            <label for="date-from">Fecha desde</label>
+            <div class='input-group date' id='date-from'>
+              <input ng-model="current_filter.date_from" type='text' class="form-control" />
+              <span class="input-group-addon">
+                <span class="glyphicon glyphicon-calendar"></span>
+              </span>
+            </div>
+          </div>
+          <div class="form-group col-md-4">
+            <label for="date-to">Fecha hasta</label>
+            <div class='input-group date' id='date-to'>
+              <input ng-model="current_filter.date_to" type='text' class="form-control" />
+              <span class="input-group-addon">
+                <span class="glyphicon glyphicon-calendar"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="form-group col-md-12">
+            <button ng-click="runQueryCrudo()" class="btn btn-default">Consultar</button>
+          </div>
+
+        </form>          
+      </div>
+
+      <div ng-if="results" class="row col-md-12">
+        <div class="col-lg-6">      
+          <h3>Resultados</h3>
+          <div ng-show="results.count > 0">
+          <p>Se encontraron <b>{{results.count}}</b> archivos.</p>
+          <nav>
+            <ul class="pager">
+              <li class="previous"><a ng-click="prevPage()"><span aria-hidden="true">&larr;</span> Más viejos</a></li>
+              <li class="next"><a ng-click="nextPage()">Más nuevos <span aria-hidden="true">&rarr;</span></a></li>
+            </ul>
+          </nav>          
+          <table class="table">
+            <thead><tr>
+              <th ng-repeat="hdr in results.header">{{hdr}}</th>
+              <th>&nbsp;</th>
+            </tr></thead>
+            <tbody>
+              <tr ng-repeat="row in results.data">
+                <td ng-repeat="hdr in results.header">{{row[hdr]}}</td>
+                <td><a href="{{row.href}}"><span class="glyphicon glyphicon-download"></span></a></td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+          <div ng-show="results.count == 0">
+            <p>No se han encontrado archivos.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
