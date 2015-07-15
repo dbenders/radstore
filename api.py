@@ -28,7 +28,7 @@ class MongoController(object):
 
 	def process_filter_params(self, q, **kwargs):
 		fields = None
-		if 'fields' in kwargs: 
+		if 'fields' in kwargs:
 			fields = kwargs.pop('fields').split(',')
 		flt = {}
 		for k,v in kwargs.items():
@@ -37,8 +37,6 @@ class MongoController(object):
 			if '.' in k and k.split('.')[-1].startswith('$'):
 				x = k.split('.')
 				k,op = '.'.join(x[:-1]),x[-1]
-				#if op == 'in': flt[k] = {'$in': v} #[self.parse_value(x) for x in v.split(',')]}
-				#else: flt[k] = {'$' + op: v}
 				if k not in flt: flt[k] = {}
 				flt[k][op] = v
 			else:
@@ -48,7 +46,7 @@ class MongoController(object):
 		return q
 
 	def parse_json_value(self, v):
-		try: return datetime.datetime.strptime(v,'%Y-%m-%dT%H:%M:%S')		
+		try: return datetime.datetime.strptime(v,'%Y-%m-%dT%H:%M:%S')
 		except: pass
 
 		try: return datetime.datetime.strptime(v,'%Y-%m-%d %H:%M:%S')
@@ -66,7 +64,7 @@ class MongoController(object):
 		try: return ObjectId(v)
 		except: pass
 
-		try: 
+		try:
 			if '.' in v: return float(v)
 		except: pass
 
@@ -82,7 +80,7 @@ class MongoController(object):
 		cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
 		if 'Access-Control-Request-Headers' in cherrypy.request.headers:
 			cherrypy.response.headers['Access-Control-Allow-Headers'] = cherrypy.request.headers['Access-Control-Request-Headers']
-		return "GET, POST"		
+		return "GET, POST"
 
 	def build_response(self, status, message=None, **kwargs):
 		if status == 'ok':
@@ -125,7 +123,7 @@ class ProductTypesController(MongoController):
 	def GET(self, name=None, **kwargs):
 		if name is not None:
 			if 'distinct' in kwargs:
-				if kwargs['distinct'] == 'type': 
+				if kwargs['distinct'] == 'type':
 					qq = {}
 				else:
 					qq = {'type':name}
@@ -138,6 +136,10 @@ class ProductTypesController(MongoController):
 			return super(ProductTypesController, self).GET(name, **kwargs)
 
 
+class SummaryController(object):
+	exposed = True
+
+
 class ProductsController(MongoController):
 	exposed = True
 	fs_dir = os.path.join(os.path.split(os.path.abspath(__file__))[0],'fs')
@@ -147,7 +149,7 @@ class ProductsController(MongoController):
 
 	def GET(self, id=None, content=None, **kwargs):
 		if id is None:
-			# if 'include' in kwargs: 
+			# if 'include' in kwargs:
 			# 	include = kwargs.pop('include').split(',')
 			# else:
 			# 	include = []
@@ -159,7 +161,7 @@ class ProductsController(MongoController):
 			if limit == 0:
 				q = []
 			else:
-				q = self.process_pagination_params(q, **kwargs)			
+				q = self.process_pagination_params(q, **kwargs)
 			q = q.sort([('datetime',pymongo.ASCENDING)])
 			q = list(q)
 
@@ -180,33 +182,33 @@ class ProductsController(MongoController):
 				q = Products.find_one({'_id':ObjectId(id)})
 	 			return serve_gzip_file(os.path.join(self.fs_dir,id), q['name'], "application/x-download", "attachment")
 	 		else:
-				if 'include' in kwargs: 
+				if 'include' in kwargs:
 					include = kwargs.pop('include').split(',')
 				else:
 					include = []
 
 				q = Products.find_one({'_id':ObjectId(id)})
 
-				if 'transformations' in include:
-					qt = Transformations.find({'inputs._id':q['_id']})
-					if qt.count() > 0:
-						q['transformations'] = list(qt)
+				# if 'transformations' in include:
+				# 	qt = Transformations.find({'inputs._id':q['_id']})
+				# 	if qt.count() > 0:
+				# 		q['transformations'] = list(qt)
 
 				return self.build_response('ok', **dict(product=q))
 
 	def upload_file(self, id):
 		size = 0
-		with gzip.open(os.path.join(self.fs_dir,id),'w') as fo: 
+		with gzip.open(os.path.join(self.fs_dir,id),'w') as fo:
 			while True:
 				data = cherrypy.request.body.read(8192)
 				if not data: break
 				size += len(data)
-				fo.write(data)	
-		return size	
+				fo.write(data)
+		return size
 
 	def POST(self, id=None, content=None, metadata=None, **kwargs):
 		if id is None:
-			if metadata is None: 
+			if metadata is None:
 				metadata = self.parse_json_dict(simplejson.load(cherrypy.request.body))
 			metadata['content_length'] = 0
 			id = Products.insert_one(metadata).inserted_id
@@ -223,7 +225,7 @@ class ProductsController(MongoController):
 
 	def PUT(self, id, **kwargs):
 		metadata = self.parse_json_dict(simplejson.load(cherrypy.request.body))
-		Products.update_one({'_id':ObjectId(id)}, metadata)
+		Products.update_one({'_id':ObjectId(id)}, {'$set':metadata})
 		return self.build_response('ok',**dict(product={'_id':id}))
 
 
@@ -261,7 +263,7 @@ class TransformationsController(MongoController):
 		if id is None:
 			q = self.process_filter_params(Transformations.collection, **kwargs)
 			q = self.process_pagination_params(q, **kwargs)
-	
+
 			return self.build_response('ok', **{
 					'count': q.count(),
 					'limit': kwargs.get('limit',self.DEFAULT_LIMIT),
@@ -280,8 +282,8 @@ class TransformationsController(MongoController):
 
 			id = Transformations.insert_one(metadata).inserted_id
 
-			for inp in metadata.get("inputs",[]):
-				Products.update_one({'_id':inp['_id']},{'$push':{'transformations':{'_id':id}}})
+			# for inp in metadata.get("inputs",[]):
+			# 	Products.update_one({'_id':inp['_id']},{'$push':{'transformations':{'_id':id}}})
 
 			return self.build_response('ok', **dict(transformation={'_id':id}))
 
@@ -290,38 +292,13 @@ class TransformationsController(MongoController):
 				metadata = self.parse_json_dict(simplejson.load(cherrypy.request.body))
 				resp = simplejson.loads(ProductsController().POST(id=None, metadata=metadata))
 				if resp['status'] != 'ok':
-					return self.build_response('error', 
+					return self.build_response('error',
 						message='error creating output product: %s' % resp['message'])
 				Transformations.update_one({'_id':ObjectId(id)},{'$push':{'outputs':{'_id':ObjectId(resp['data']['product']['_id'])}}})
 				return self.build_response('ok', **dict(product=resp['data']['product']))
 
 			else:
 				return self.build_response('error',message='cannot POST metadata for an existing transformation. Use PUT instead.')
-
-
-# class FileSystem(object):
-# 	exposed = True
-# 	fs_dir = os.path.join(os.path.split(os.path.abspath(__file__))[0],'fs')
-
-# 	def GET(self, id, **kwargs):
-# 		print self.fs_dir
-# 		return serve_file(os.path.join(self.fs_dir,id), "application/x-download", "attachment")
-
-# 	def POST(self, **kwargs):
-# 		id = ''.join(random.choice('0123456789abcdefghijklmnopqrstuvwxyz') for i in range(24))
-# 		with open(os.path.join(self.fs_dir,id),'w') as fo: 
-# 			while True:
-# 				data = cherrypy.request.body.read(8192)
-# 				if not data: break
-# 				fo.write(data)
-		
-# 		resp = {
-# 			'sattus': 'ok',
-# 			'data': {
-# 				'file': id
-# 			}
-# 		}
-# 		return simplejson.dumps(resp, default=str)
 
 
 if __name__ == '__main__':
@@ -336,22 +313,24 @@ if __name__ == '__main__':
         {'/':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         })
-    cherrypy.tree.mount(    
+    cherrypy.tree.mount(
         TransformationsController(), '/api/v1/transformations',
         {'/':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
-        }        
-    )
-    cherrypy.tree.mount(    
+        })
+    cherrypy.tree.mount(
+        SummaryController(), '/api/v1/summary',
+        {'/':
+            {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
+        })
+    cherrypy.tree.mount(
         ProcessesController(), '/api/v1/procs',
         {'/':
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
-        }        
+        }
     )
     cherrypy.config.update({'server.socket_host': '0.0.0.0',
                         'server.socket_port': 3003,
                        })
     cherrypy.engine.start()
     cherrypy.engine.block()
-
-

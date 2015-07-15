@@ -8,7 +8,7 @@
     <script type="text/javascript" src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="bower_components/eonasdan-bootstrap-datetimepicker/build/js/bootstrap-datetimepicker.min.js"></script>
     <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="bower_components/eonasdan-bootstrap-datetimepicker/build/css/bootstrap-datetimepicker.min.css" />    
+    <link rel="stylesheet" href="bower_components/eonasdan-bootstrap-datetimepicker/build/css/bootstrap-datetimepicker.min.css" />
     <script src="bower_components/angular/angular.js"></script>
     <script src="query/query.js"></script>
 </head>
@@ -30,7 +30,7 @@
     <div class="page-header">
       <h3>Consulta de datos de radar</h3>
     </div>
-    
+
     <div class="row">
       <div class="col-lg-6">
         <form>
@@ -38,14 +38,15 @@
             <label for="variable">Formato</label>
             <select ng-model="current_filter.format" class="form-control" id="format">
               <option value="vol">VOL</option>
-              <option value="csv.latlon">CSV</option>
-              <option value="geotiff.original">GeoTIFF</option>
+              <option value="vol.slice:latlon:csv">CSV</option>
+              <option value="vol.slice:geotiff">GeoTIFF</option>
             </select>
           </div>
 
           <div class="form-group col-md-4">
             <label for="variable">Variable</label>
             <select ng-model="current_filter.variable" class="form-control" id="variable">
+              <option value="">Todas</option>
               <option>dBZ</option>
               <option>KDP</option>
               <option>ZDR</option>
@@ -55,16 +56,18 @@
             </select>
           </div>
 
-          <div ng-style="{visibility: current_filter.format == 'vol' && 'hidden' || 'visible'}" class="form-group col-md-4">          
-            <label for="variable">Slice</label>
+          <div ng-style="{visibility: current_filter.format == 'vol' && 'hidden' || 'visible'}" class="form-group col-md-4">
+            <label for="variable">Angulo</label>
             <select ng-model="current_filter.slice" class="form-control" id="slice" ng-disabled="current_filter.format == 'vol'">
               <option value="">Todos</option>
-              <option>1</option>
-              <option>3</option>
-              <option>5</option>
-              <option>7</option>
-              <option>9</option>
-              <option>11</option>
+              <option value="1">0.5°</option>
+              <option value="3">1.3°</option>
+              <option value="5">2.3°</option>
+              <option value="7">3.5°</option>
+              <option value="9">5°</option>
+              <option value="11">11.8°</option>
+              <option value="13">15.1°</option>
+              <option value="15">19.2°</option>
             </select>
           </div>
 
@@ -91,11 +94,11 @@
             <button ng-click="runQueryCrudo()" class="btn btn-default">Consultar</button>
           </div>
 
-        </form>          
+        </form>
       </div>
 
       <div ng-if="results" class="row col-md-12">
-        <div class="col-lg-6">      
+        <div class="col-lg-6">
           <h3>Resultados</h3>
           <div ng-show="results.count > 0">
           <p>Se encontraron <b>{{results.count}}</b> archivos.</p>
@@ -104,14 +107,20 @@
               <li class="previous"><a ng-click="prevPage()"><span aria-hidden="true">&larr;</span> Más viejos</a></li>
               <li class="next"><a ng-click="nextPage()">Más nuevos <span aria-hidden="true">&rarr;</span></a></li>
             </ul>
-          </nav>          
+          </nav>
           <table class="table">
             <thead><tr>
+              <th>preview</th>
               <th ng-repeat="hdr in results.header">{{hdr}}</th>
               <th>&nbsp;</th>
             </tr></thead>
             <tbody>
               <tr ng-repeat="row in results.data">
+                <td class="col-md-1">
+                  <div class="thumbnail" style="cursor:pointer" ng-click="openPreview(row.thumbnail)">
+                    <img ng-src="{{row.thumbnail}}"/>
+                  </div>
+                </td>
                 <td ng-repeat="hdr in results.header">{{row[hdr]}}</td>
                 <td><a href="{{row.href}}"><span class="glyphicon glyphicon-download"></span></a></td>
               </tr>
@@ -124,6 +133,18 @@
         </div>
       </div>
     </div>
+
+
+      <div id="myModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog modal-sm">
+          <div class="modal-content" style="display:inline-block" >
+            <img ng-src="{{preview_src}}">
+            <a href="{{preview_src}}" target="_blank"><span style="font-size:25px" class="glyphicon glyphicon-download"></span></a>
+          </div>
+        </div>
+      </div>
+
+
   </div>
 
 </body>
