@@ -56,10 +56,13 @@
             </select>
           </div>
 
-          <div ng-style="{visibility: current_filter.format == 'vol' && 'hidden' || 'visible'}" class="form-group col-md-4">
-            <label for="variable">Angulo</label>
+          <div ng-style="{visibility: current_filter.format == 'vol' && 'hidden' || 'visible'}" class="form-group col-md-5">
+            <label for="slice">Ángulo</label>
             <select ng-model="current_filter.slice" class="form-control" id="slice" ng-disabled="current_filter.format == 'vol'">
               <option value="">Todos</option>
+              <option value="comb_min">Combinado (min)</option>
+              <option value="comb_max">Combinado (max)</option>
+              <option value="comb_avg">Combinado (prom)</option>
               <option value="1">0.5°</option>
               <option value="3">1.3°</option>
               <option value="5">2.3°</option>

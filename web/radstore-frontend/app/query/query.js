@@ -53,7 +53,15 @@ app.controller('QueryCtrl', function($scope, $http, $rootScope) {
     flt['limit'] = 10;
     flt['offset'] = ($scope.results) ? $scope.results.offset : 0;
     if($scope.current_filter.slice && flt['type'] != 'vol') {
-      flt['slice.num'] = $scope.current_filter.slice;
+      if($scope.current_filter.slice.substring(0,5) == 'comb_') {
+        flt['type'] = flt['type'].replace('.slice','');
+        var op = $scope.current_filter.slice.substring(5);
+        if(op.length > 0) {
+          flt['operation'] = op;
+        }
+      } else {
+        flt['slice.num'] = $scope.current_filter.slice;
+      }
     }
 
     $http.get(api_url+'/products', {params: flt})
