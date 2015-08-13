@@ -74,7 +74,7 @@ app.controller('QueryCtrl', function($scope, $http, $rootScope) {
           $scope.results.header.push("variable");
         }
         if(!$scope.current_filter.slice && $scope.current_filter.format != 'vol') {
-          $scope.results.header.push("ángulo");
+          $scope.results.header.push("elevación");
         }
         $scope.results.offset = data.data.offset;
         $scope.results.count = data.data.count;
@@ -85,7 +85,7 @@ app.controller('QueryCtrl', function($scope, $http, $rootScope) {
             "variable": prod.variable
           }
           if(prod.slice) {
-            ans["ángulo"] = prod.slice.posangle + "°";
+            ans["elevación"] = prod.slice.posangle + "°";
           }
           if(prod.thumbnail) {
             ans.thumbnail = api_url+"/products/"+prod.thumbnail+"/content";
